@@ -14,7 +14,7 @@
 | 9 | Safety rules | done | 8d84cb1 | live LLM classification skipped (no key); local fallback used without key |
 | 10 | Web app | done | e708058 | design skills pre-flight audit not run separately (rules followed by hand) |
 | 11 | Accounts and billing (test mode) | done (live Stripe flow BLOCKED) | bf1b003 | no Stripe keys/SECRET_KEY supplied; checkout creation mocked, webhook signature verified for real |
-| 12 | Testing and hardening | done | | audits clean; GPU/live-key/live-Stripe items still BLOCKED (see Waiting on you) |
+| 12 | Testing and hardening | done | 8aa7b0b | audits clean; GPU/live-key/live-Stripe items still BLOCKED (see Waiting on you) |
 
 ## What exists now
 API: FastAPI app factory, GET /health, standard error shape, config, SQLite+Alembic (empty migration). Web: Next.js home page + src/lib/api.ts. Fixtures in services/api/tests/fixtures (Caveat font, hand_page_1.png/.json, card.pdf, planner.pdf, blank.png). Makefile targets all exist.
