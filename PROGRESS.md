@@ -8,7 +8,7 @@
 | 3 | Renderer interface, fake, jitter, export | done | f230798 | |
 | 4 | One-DM renderer and cost measurement | blocked (GPU) | ffb33f3 | CPU-side code and tests pass independent check; GPU criteria unverified |
 | 5 | Learn the hand | done | 65191c2 | OCR=trocr run skipped (no torch) |
-| 6 | Read the target page | pending | | |
+| 6 | Read the target page | done | 05ba5f3 | margin-line bug found by checker, fixed + tested |
 | 7 | Layout engine | pending | | |
 | 8 | Chat agent | pending | | |
 | 9 | Safety rules | pending | | |
@@ -26,6 +26,8 @@ Prompt 3 adds: render/base.py (StyleRef, WordImage, Renderer), render/fake.py (+
 Prompt 4 adds: render/onedm.py (OneDMRenderer, render_words, converters), make install-ml, scripts/measure_cost.py, pinned One-DM commit dde2205a.
 
 Prompt 5 adds: hand/ocr.py (OcrEngine, FakeOcr, TrocrOcr, get_ocr), hand/segment.py (BBox, find_lines, split_words, deskew_page), hand/ingest.py (background job), hand/profile.py (rebuild_profile, style_refs_for(hand_id, k, seed, db=None)), migration 0003 (hands.status_reason), GET /hand now has status_reason, status_message, sample_count; db.new_session().
+
+Prompt 6 adds: page/analyze.py (analyze_page, draw_regions, CLI), page/regions.py (Region), analysis_json on chat files, GET /chats/{id}/files/{fid}/analysis and /pages/{n}.png.
 
 ## Waiting on you
 - Prompt 4: NVIDIA GPU machine, ONEDM_WEIGHTS_PATH, GPU_COST_THB_PER_HOUR
