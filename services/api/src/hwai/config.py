@@ -11,6 +11,7 @@ class Settings(BaseSettings):
 
     api_base_url: str = "http://localhost:8000"
     web_base_url: str = "http://localhost:3000"
+    env: str = "dev"
     data_dir: Path = Path("./data")
     renderer: str = "fake"  # fake | onedm
     ocr: str = "fake"  # fake | trocr

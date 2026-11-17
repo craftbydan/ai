@@ -7,7 +7,8 @@ from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from hwai.config import get_settings
-from hwai.routes import health
+from hwai.errors import ApiError
+from hwai.routes import chats, hand, health
 
 
 def error_response(status: int, code: str, message: str) -> JSONResponse:
@@ -25,6 +26,10 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
     )
 
+    @app.exception_handler(ApiError)
+    async def api_error(_: Request, exc: ApiError) -> JSONResponse:
+        return error_response(exc.status, exc.code, exc.message)
+
     @app.exception_handler(StarletteHTTPException)
     async def http_error(_: Request, exc: StarletteHTTPException) -> JSONResponse:
         return error_response(exc.status_code, f"http_{exc.status_code}", str(exc.detail))
@@ -38,6 +43,8 @@ def create_app() -> FastAPI:
         return error_response(500, "internal", "Something went wrong on our side.")
 
     app.include_router(health.router)
+    app.include_router(hand.router)
+    app.include_router(chats.router)
     return app
 
 

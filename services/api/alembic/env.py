@@ -1,6 +1,7 @@
 from sqlalchemy import create_engine
 
 from alembic import context
+from hwai import models  # noqa: F401  (register tables)
 from hwai.db import Base, database_url
 
 target_metadata = Base.metadata
