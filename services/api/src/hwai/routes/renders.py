@@ -17,7 +17,7 @@ from hwai.page.analyze import load_pages
 from hwai.page.regions import Region
 from hwai.render import get_renderer
 from hwai.routes.chats import get_owned_chat
-from hwai.schemas import FitItem, FitReport, RenderOut, RenderRequest
+from hwai.schemas import FitItem, FitReport, Placement, RenderOut, RenderRequest
 
 router = APIRouter()
 
@@ -53,15 +53,14 @@ def _png(img: Image.Image) -> bytes:
     return buf.getvalue()
 
 
-@router.post("/chats/{chat_id}/render", response_model=RenderOut)
-def render_chat(chat_id: str, body: RenderRequest, db: DbDep, user: UserDep) -> RenderOut:
-    chat = get_owned_chat(db, user, chat_id)
+def render_placements(db: Session, chat: Chat, placements: list[Placement]) -> RenderOut:
+    """Shared by POST /chats/{id}/render and the agent's `render` tool."""
     chat_file = target_file(db, chat)
     analysis: dict[str, Any] = chat_file.analysis_json or {"pages": []}
     regions = {
         r["id"]: Region.model_validate(r) for page in analysis["pages"] for r in page["regions"]
     }
-    for p in body.placements:
+    for p in placements:
         if p.region_id not in regions:
             raise ApiError(
                 422,
@@ -72,7 +71,7 @@ def render_chat(chat_id: str, body: RenderRequest, db: DbDep, user: UserDep) -> 
 
     renderer = get_renderer()
     placed: list[PlacedText] = []
-    for p in body.placements:
+    for p in placements:
         refs = []
         if chat.hand_id:
             from hwai.hand.profile import style_refs_for
@@ -99,14 +98,14 @@ def render_chat(chat_id: str, body: RenderRequest, db: DbDep, user: UserDep) -> 
 
     last = db.scalar(select(func.max(Render.version)).where(Render.chat_id == chat.id)) or 0
     version = last + 1
-    preview_path = storage.save_file(user.id, "renders", _png(composed[0]), "png")
+    preview_path = storage.save_file(chat.user_id, "renders", _png(composed[0]), "png")
     for n, img in enumerate(composed[1:], 2):
         storage.write_file(page_path(preview_path, n), _png(img))
     db.add(
         Render(
             chat_id=chat.id,
             version=version,
-            placements_json=[p.model_dump() for p in body.placements],
+            placements_json=[p.model_dump() for p in placements],
             preview_path=preview_path,
         )
     )
@@ -129,6 +128,12 @@ def render_chat(chat_id: str, body: RenderRequest, db: DbDep, user: UserDep) -> 
         preview_url=f"/chats/{chat.id}/renders/{version}/preview.png",
         fit_report=report,
     )
+
+
+@router.post("/chats/{chat_id}/render", response_model=RenderOut)
+def render_chat(chat_id: str, body: RenderRequest, db: DbDep, user: UserDep) -> RenderOut:
+    chat = get_owned_chat(db, user, chat_id)
+    return render_placements(db, chat, body.placements)
 
 
 @router.get("/chats/{chat_id}/renders/{version}/preview.png")

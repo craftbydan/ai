@@ -29,11 +29,33 @@ def fail(msg: str) -> NoReturn:
     sys.exit(2)
 
 
+def agent_usage_summary() -> None:
+    """Print agent token/cost totals from stored messages.content_json, if there are any."""
+    from sqlalchemy import select
+
+    from hwai.db import new_session
+    from hwai.models import Message
+
+    try:
+        with new_session() as db:
+            rows = db.scalars(select(Message).where(Message.role == "assistant")).all()
+    except Exception:  # no database yet
+        return
+    usages = [m.content_json["usage"] for m in rows if (m.content_json or {}).get("usage")]
+    if not usages:
+        return
+    tin = sum(u["input_tokens"] for u in usages)
+    tout = sum(u["output_tokens"] for u in usages)
+    thb = sum(u["est_thb"] for u in usages)
+    print(f"agent: {len(usages)} model calls, {tin} in / {tout} out tokens, ~{thb:.3f} THB")
+
+
 def main() -> None:
     os.environ["RENDERER"] = "onedm"
     from hwai.config import get_settings
 
     settings = get_settings()
+    agent_usage_summary()
     if settings.gpu_cost_thb_per_hour <= 0:
         fail("GPU_COST_THB_PER_HOUR is not set (price per hour of this GPU in THB).")
     if not settings.onedm_weights_path or not Path(settings.onedm_weights_path).is_file():

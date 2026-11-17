@@ -20,6 +20,7 @@ dependencies = [
   "pypdfium2",
   "reportlab",
   "pikepdf",
+  "anthropic",
 ]
 
 [project.optional-dependencies]

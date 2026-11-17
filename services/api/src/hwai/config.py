@@ -20,6 +20,10 @@ class Settings(BaseSettings):
 
     anthropic_api_key: str = ""
     agent_model: str = "claude-haiku-5-5"
+    # Cost estimate only (USD per million tokens, USD->THB); set to the model's real price.
+    agent_usd_per_mtok_in: float = 1.0
+    agent_usd_per_mtok_out: float = 5.0
+    usd_thb: float = 36.0
 
     onedm_repo_dir: Path = Path("./vendor/One-DM")
     onedm_weights_path: str = ""

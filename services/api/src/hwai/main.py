@@ -8,7 +8,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from hwai.config import get_settings
 from hwai.errors import ApiError
-from hwai.routes import chats, exports, hand, health, renders
+from hwai.routes import chats, exports, hand, health, messages, renders
 
 
 def error_response(status: int, code: str, message: str) -> JSONResponse:
@@ -50,6 +50,7 @@ def create_app() -> FastAPI:
     app.include_router(chats.router)
     app.include_router(renders.router)
     app.include_router(exports.router)
+    app.include_router(messages.router)
     return app
 
 

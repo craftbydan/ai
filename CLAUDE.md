@@ -153,3 +153,8 @@ One-DM has no inference function, only `test.py` (multi-GPU, dataset-driven). `r
 Conventions: style sample = 64 px high greyscale, 128..352 px wide, plus a Laplace map; content characters limited to One-DM's 77-char set; output = 64 px high, 32 px per character. Error codes: `no_style_ref`, `unsupported_character`, `onedm_not_installed`, `onedm_weights_missing`, `ml_not_installed`, `no_gpu`.
 Resolved versions: ML extras NOT installed (no GPU in the build environment); One-DM's own environment.yml pins python 3.8, pytorch 1.13.1/cuda 11.7, diffusers 0.18.2. Record the versions actually resolved by `make install-ml` here once run on the GPU machine.
 Status: GPU verification BLOCKED until a GPU machine, `ONEDM_WEIGHTS_PATH` and `GPU_COST_THB_PER_HOUR` exist. The public weights remain NOT cleared for paid use (see Launch gate).
+
+## Agent (Prompt 8)
+`anthropic` SDK (resolved 2.9.0, added to pyproject deps). Default `AGENT_MODEL=claude-haiku-5-5`. Model id NOT confirmed against the Anthropic docs: https://docs.anthropic.com/en/docs/about-claude/models was unreachable from the build environment (no response through the proxy); the id comes from the session's model list (claude-fable-5-2, claude-opus-5-5, claude-sonnet-5-5, claude-haiku-5-5). Confirm before the first live run.
+Cost estimate uses `AGENT_USD_PER_MTOK_IN/OUT` (placeholders 1.0/5.0) and `USD_THB` (36): set real prices. Every `messages` row has `content_json.usage = {input_tokens, output_tokens, est_thb}` (user/tool rows are zero).
+Injection: `get_llm_client()` (FastAPI dependency; tests override it with a scripted fake). `check_chat_file_allowed()` in `agent/loop.py` is the open hook for Prompt 9.
