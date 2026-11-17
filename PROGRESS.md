@@ -12,7 +12,7 @@
 | 7 | Layout engine | done | 25e6041 | |
 | 8 | Chat agent | done | e9eb6e2 | live check skipped (no ANTHROPIC_API_KEY); model id claude-haiku-5-5 unconfirmed; est. cost uses placeholder USD prices |
 | 9 | Safety rules | done | 8d84cb1 | live LLM classification skipped (no key); local fallback used without key |
-| 10 | Web app | done (uncommitted) | | AGENT=mock, X-Test-Classifier header, GET /chats, chat detail latest_render_version + file safety_message; make e2e via scripts/e2e.sh |
+| 10 | Web app | done | e708058 | design skills pre-flight audit not run separately (rules followed by hand) |
 | 11 | Accounts and billing (test mode) | pending | | needs Stripe test keys |
 | 12 | Testing and hardening | pending | | |
 
@@ -43,6 +43,7 @@ Prompt 9 adds: safety/ (rules, classify, signature), CLASSIFIER=real|mock:<kind>
 - Prompt 11: SECRET_KEY, STRIPE_SECRET_KEY (sk_test_), STRIPE_WEBHOOK_SECRET
 
 ## Deviations
+- P10 minor visual issues (checker): ruled-line bg runs through body text in /chats and empty-chat empty states; sparse right column on home at 1440; preview frame capped at 72vh; low-contrast disabled Send button. Added GET /chats, latest_render_version, safety_message, X-Test-Classifier header, AGENT=mock.
 - P9 known risks (checker): signature heuristic is pixel-only (misses uncaptioned/full-width lines, may flag 'Date' blanks); no-key fallback refuses pages >250 small glyphs or >6% ink as legal:fallback (may wrongly refuse dense letters); only first 3 pages sent to the classifier; regex signature-text check may refuse innocent 'email signature'. Real behaviour needs a live-key check.
 - P7: render uses the chat's latest uploaded file; composed pages are stored (page 1 = preview_path, others `-pN.png`) and export reads them, so exports match previews even if the hand changes; PDF export uses the original PDF's point size (images: 150 DPI conversion in export.py); render works regardless of hand status (agent will gate later); words rendered once at full size then shrunk by resize.
 - P5: deskew is a separate deskew_page() called by ingest (boxes must be in the deskewed frame); split_words takes optional n_words (cut at widest gaps) used when OCR word count differs from threshold split; FakeOcr serves hand_page_1.json lines in order per page (override path with FAKE_OCR_TRUTH_PATH); profile prunes unselected samples (max 150, 4 per word); added hands.status_reason; test_uploads file counter now ignores crops/.
