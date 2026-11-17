@@ -11,11 +11,14 @@ import pytest
 from fastapi.testclient import TestClient
 from PIL import Image
 from sqlalchemy import select
+from sqlalchemy.orm import Session
 
 from hwai.agent.loop import downscale, get_llm_client
-from hwai.db import new_session
+from hwai.auth import current_user
+from hwai.config import get_settings
+from hwai.db import make_engine, new_session
 from hwai.main import create_app
-from hwai.models import Message, Render
+from hwai.models import Message, Render, User
 
 from .conftest import FIXTURES
 
@@ -220,7 +223,62 @@ def test_page_images_are_downscaled() -> None:
     assert downscale(Image.new("RGB", (400, 300))).size == (400, 300)
 
 
-def test_no_api_key_gives_clean_error(client: TestClient) -> None:
+@pytest.fixture
+def no_key(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "")
+    get_settings.cache_clear()
+
+
+def _ready_hand(client: TestClient) -> None:
+    with (FIXTURES / "hand_page_1.png").open("rb") as f:
+        res = client.post(
+            "/hand/documents",
+            files={"file": ("hand_page_1.png", f)},
+            data={"own_hand_confirmed": "true"},
+        )
+    assert res.status_code == 201
+
+
+def _err(res: Any, status: int, code: str) -> None:
+    assert res.status_code == status, res.text
+    assert res.json()["error"]["code"] == code
+
+
+def test_no_api_key_gives_clean_error(agent_client: tuple[TestClient, str], no_key: None) -> None:
+    client, chat_id = agent_client
+    res = client.post(f"/chats/{chat_id}/messages", json={"text": "hi"})
+    _err(res, 503, "agent_not_configured")
+    with new_session() as db:
+        assert db.scalars(select(Message).where(Message.chat_id == chat_id)).all() == []
+
+
+def test_no_key_unready_hand_is_409(client: TestClient, no_key: None) -> None:
     chat_id = client.post("/chats").json()["id"]
-    res = create_app and client.post(f"/chats/{chat_id}/messages", json={"text": "hi"})
-    assert res.status_code == 503 and res.json()["error"]["code"] == "agent_not_configured"
+    with (FIXTURES / "card.pdf").open("rb") as f:
+        client.post(f"/chats/{chat_id}/files", files={"file": ("card.pdf", f)})
+    _err(client.post(f"/chats/{chat_id}/messages", json={"text": "hi"}), 409, "hand_not_ready")
+
+
+def test_no_key_ready_hand_without_file_is_400(client: TestClient, no_key: None) -> None:
+    _ready_hand(client)
+    chat_id = client.post("/chats").json()["id"]
+    _err(client.post(f"/chats/{chat_id}/messages", json={"text": "hi"}), 400, "no_file")
+
+
+def test_no_key_other_users_chat_is_404(agent_client: tuple[TestClient, str], no_key: None) -> None:
+    client, chat_id = agent_client
+    with Session(make_engine()) as db:
+        other = User(email="other@local")
+        db.add(other)
+        db.commit()
+        other_id = other.id
+
+    app2 = create_app()
+
+    def _other() -> User:
+        with Session(make_engine()) as db:
+            return db.get_one(User, other_id)
+
+    app2.dependency_overrides[current_user] = _other
+    c2 = TestClient(app2, raise_server_exceptions=False)
+    _err(c2.post(f"/chats/{chat_id}/messages", json={"text": "hi"}), 404, "not_found")

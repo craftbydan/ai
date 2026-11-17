@@ -29,14 +29,29 @@ HISTORY_TURNS = 6
 APOLOGY = "Sorry, I could not finish that. Please try again with a simpler request."
 
 
-def get_llm_client() -> Any:
-    """FastAPI dependency and injection point. Tests override it with a scripted fake."""
-    settings = get_settings()
-    if not settings.anthropic_api_key:
-        raise ApiError(503, "agent_not_configured", "The chat assistant is not set up yet.")
-    import anthropic
+class LazyLlmClient:
+    """Resolves the real Anthropic client on first use, so a missing key only raises the
+    503 when a model call is actually needed (after ownership/readiness/file checks)."""
 
-    return anthropic.Anthropic(api_key=settings.anthropic_api_key)
+    def __init__(self) -> None:
+        self._client: Any = None
+
+    @property
+    def messages(self) -> Any:
+        if self._client is None:
+            settings = get_settings()
+            if not settings.anthropic_api_key:
+                raise ApiError(503, "agent_not_configured", "The chat assistant is not set up yet.")
+            import anthropic
+
+            self._client = anthropic.Anthropic(api_key=settings.anthropic_api_key)
+        return self._client.messages
+
+
+def get_llm_client() -> Any:
+    """FastAPI dependency and injection point. Tests override it with a scripted fake.
+    Never raises: the 503 is deferred to first use of `.messages`."""
+    return LazyLlmClient()
 
 
 def check_chat_file_allowed(chat_file: ChatFile) -> None:
@@ -131,6 +146,7 @@ def _history(db: Session, chat: Chat) -> list[dict[str, Any]]:
 def run_agent(db: Session, chat: Chat, text: str, client: Any) -> AgentResult:
     chat_file = target_file(db, chat)
     check_chat_file_allowed(chat_file)
+    _ = client.messages  # resolve the client (503 if unconfigured) before any DB write
     analysis: dict[str, Any] = chat_file.analysis_json or {"pages": []}
     regions_by_page: dict[int, list[Region]] = {
         n: [Region.model_validate(r) for r in pg["regions"]]
