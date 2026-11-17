@@ -7,7 +7,7 @@
 | 2 | Data model, accounts-lite, uploads | done | 7104cea | |
 | 3 | Renderer interface, fake, jitter, export | done | f230798 | |
 | 4 | One-DM renderer and cost measurement | blocked (GPU) | ffb33f3 | CPU-side code and tests pass independent check; GPU criteria unverified |
-| 5 | Learn the hand | done (uncommitted) | | OCR=trocr run skipped (no torch/network) |
+| 5 | Learn the hand | done | 65191c2 | OCR=trocr run skipped (no torch) |
 | 6 | Read the target page | pending | | |
 | 7 | Layout engine | pending | | |
 | 8 | Chat agent | pending | | |

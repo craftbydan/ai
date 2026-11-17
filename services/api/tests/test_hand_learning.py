@@ -36,7 +36,7 @@ def test_most_words_get_a_crop(client: TestClient) -> None:
     expected = sum(len(line["text"].split()) for line in TRUTH["lines"])
     with new_session() as db:
         count = len(db.scalars(select(WordSample)).all())
-    assert count >= 0.8 * expected or count >= 20  # profile keeps the best, varied subset
+    assert count >= 0.8 * expected
     hand = client.get("/hand").json()
     assert hand["sample_count"] == count
 
