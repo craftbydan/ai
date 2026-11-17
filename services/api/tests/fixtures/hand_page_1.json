@@ -1,0 +1,66 @@
+{
+  "width": 1240,
+  "height": 1754,
+  "lines": [
+    {
+      "line": 1,
+      "text": "The quick brown fox jumps over the lazy dog.",
+      "baseline_px": 198
+    },
+    {
+      "line": 2,
+      "text": "Pack my box with five dozen liquor jugs.",
+      "baseline_px": 319
+    },
+    {
+      "line": 3,
+      "text": "Happy birthday, I hope your day is wonderful.",
+      "baseline_px": 443
+    },
+    {
+      "line": 4,
+      "text": "Thank you so much for the lovely gift.",
+      "baseline_px": 557
+    },
+    {
+      "line": 5,
+      "text": "We are meeting at the station at seven.",
+      "baseline_px": 683
+    },
+    {
+      "line": 6,
+      "text": "Please bring warm clothes and a good book.",
+      "baseline_px": 797
+    },
+    {
+      "line": 7,
+      "text": "My favourite season is autumn with golden leaves.",
+      "baseline_px": 924
+    },
+    {
+      "line": 8,
+      "text": "A small step today makes a big journey tomorrow.",
+      "baseline_px": 1039
+    },
+    {
+      "line": 9,
+      "text": "Remember to water the plants before you leave.",
+      "baseline_px": 1158
+    },
+    {
+      "line": 10,
+      "text": "The market sells fresh bread, honey and apples.",
+      "baseline_px": 1279
+    },
+    {
+      "line": 11,
+      "text": "She wrote a long letter to her oldest friend.",
+      "baseline_px": 1399
+    },
+    {
+      "line": 12,
+      "text": "Every morning begins with a warm cup of tea.",
+      "baseline_px": 1518
+    }
+  ]
+}

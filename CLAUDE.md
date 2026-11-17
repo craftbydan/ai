@@ -133,3 +133,16 @@ Launch: 20 THB per document of up to 10 pages. Later: 1 THB per page. Price live
 - Don't add features from later prompts early. Don't swap pinned libraries.
 - Don't commit data/, weights, `.env`, or any uploaded document.
 - Don't fake model output in production code paths; fakes live only in `render/fake.py`, `hand/ocr.py::FakeOcr` and test fixtures, and are chosen by env flags `RENDERER=fake|onedm` and `OCR=fake|trocr`.
+
+## Resolved versions
+Recorded after Prompt 1 (installed 2026-11-17; Python 3.13.18, Node v22.23.4, npm 10.9.9).
+
+API (`services/api`, pip, latest at install time; `ml` extra not installed):
+fastapi 0.163.1, uvicorn 0.54.0, SQLAlchemy 2.1.9, alembic 1.20.1, pydantic 2.14.3, pydantic-settings 2.16.3, python-multipart 0.0.34, Pillow 13.0.0, numpy 2.5.5, opencv-python-headless 5.0.0.93, pypdfium2 5.15.2, reportlab 5.1.0, pikepdf 10.18.2, pytest 9.2.0, httpx 0.28.1, ruff 0.17.5, mypy 2.4.1.
+
+Web (`apps/web`, npm):
+next 16.4.6, react 19.3.1, react-dom 19.3.1, typescript 6.0.3, tailwindcss 4.3.5, @tailwindcss/postcss 4.3.5, postcss 8.5.33, vitest 5.1.0, @playwright/test 1.65.1, eslint 9.39.5, eslint-config-next 16.4.6, @types/node 26.6.6, @types/react 19.3.0, @types/react-dom 19.3.0.
+
+Fixture font: Caveat (variable font `Caveat[wght].ttf`, saved as `services/api/tests/fixtures/Caveat.ttf`, downloaded from github.com/google/fonts/ofl/caveat), licence in `fixtures/OFL.txt` (SIL OFL 1.1).
+
+Notes: `make dev` and `make migrate` set `DATA_DIR` to `<repo>/data`. If Playwright's bundled browser is not installed, set `PW_CHROMIUM_PATH` to a Chromium binary before `make e2e`.
