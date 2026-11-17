@@ -6,7 +6,7 @@
 | 1 | Project setup and tooling | done | b6dd600 | make dev parent ignores SIGTERM (dev ergonomics only) |
 | 2 | Data model, accounts-lite, uploads | done | 7104cea | |
 | 3 | Renderer interface, fake, jitter, export | done | f230798 | |
-| 4 | One-DM renderer and cost measurement | partial (GPU part BLOCKED) | | code + CPU tests done; GPU checks and measure_cost not run |
+| 4 | One-DM renderer and cost measurement | blocked (GPU) | ffb33f3 | CPU-side code and tests pass independent check; GPU criteria unverified |
 | 5 | Learn the hand | pending | | |
 | 6 | Read the target page | pending | | |
 | 7 | Layout engine | pending | | |
@@ -23,12 +23,15 @@ Prompt 2 adds: tables+migration 0002 (no payments), storage.py, pdfio (page_imag
 
 Prompt 3 adds: render/base.py (StyleRef, WordImage, Renderer), render/fake.py (+CLI), render/jitter.py, get_renderer() (onedm raises NotImplementedError until P4), text/splitter.py, export.py (export_png, export_pdf, mandatory AI marking, +CLI), bundled Caveat in render/assets.
 
+Prompt 4 adds: render/onedm.py (OneDMRenderer, render_words, converters), make install-ml, scripts/measure_cost.py, pinned One-DM commit dde2205a.
+
 ## Waiting on you
 - Prompt 4: NVIDIA GPU machine, ONEDM_WEIGHTS_PATH, GPU_COST_THB_PER_HOUR
 - Prompt 8: ANTHROPIC_API_KEY (live runs only)
 - Prompt 11: SECRET_KEY, STRIPE_SECRET_KEY (sk_test_), STRIPE_WEBHOOK_SECRET
 
 ## Deviations
+- P4 GPU risks (checker review, untested): data/unifont.pickle must be fetched from One-DM dataset into vendor/One-DM/data/; Laplace recipe is a guess; ml extras unpinned vs One-DM's py3.8/torch1.13.1/diffusers0.18.2; unet.eval() should be called before each sample; sampling is not behind a lock; one style ref per call.
 - P3: StyleRef is a frozen dataclass (text, image); export_png overlay layers are (RGBA image, (x,y)) tuples; export.py imports FONT_PATH from render/fake.py.
 - P2: added ENV setting and error codes own_hand_not_confirmed, file_too_large, too_many_pages; POST /chats creates an empty hand if none.
 - P1: optional PW_CHROMIUM_PATH env in playwright.config.ts (bundled browser path missing); extra e2e smoke spec; python-multipart added to API deps.
