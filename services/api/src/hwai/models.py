@@ -1,4 +1,4 @@
-"""ORM models (payments arrive in Prompt 11)."""
+"""ORM models."""
 
 import uuid
 from datetime import UTC, datetime
@@ -116,4 +116,19 @@ class Export(Base):
     render_id: Mapped[str] = mapped_column(ForeignKey("renders.id"), index=True)
     format: Mapped[str] = mapped_column(String(8))  # pdf|png
     file_path: Mapped[str] = mapped_column(String(512))
+    created_at: Mapped[datetime] = _created()
+
+
+class Payment(Base):
+    """One Stripe Checkout Session for one render version of a chat (TEST mode)."""
+
+    __tablename__ = "payments"
+    id: Mapped[str] = _id()
+    user_id: Mapped[str] = mapped_column(ForeignKey("users.id"), index=True)
+    chat_id: Mapped[str] = mapped_column(ForeignKey("chats.id"), index=True)
+    render_version: Mapped[int] = mapped_column(Integer)
+    stripe_session_id: Mapped[str] = mapped_column(String(255), unique=True)
+    status: Mapped[str] = mapped_column(String(16), default="pending")  # pending|paid
+    amount_thb: Mapped[int] = mapped_column(Integer)
+    pages: Mapped[int] = mapped_column(Integer)
     created_at: Mapped[datetime] = _created()

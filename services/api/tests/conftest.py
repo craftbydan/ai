@@ -19,6 +19,12 @@ def _isolated_data_dir(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Itera
     monkeypatch.setenv("DATA_DIR", str(data_dir))
     monkeypatch.setenv("ENV", "dev")
     monkeypatch.setenv("CLASSIFIER", "mock:ok")  # tests never call the real classifier
+    # Tests that are not about accounts/billing run as the dev user with payment off. Auth and
+    # billing tests flip these (DEV_USER=0, BILLING=on) and log in for real via `signup()`.
+    monkeypatch.setenv("DEV_USER", "1")
+    monkeypatch.setenv("BILLING", "off")
+    for name in ("SECRET_KEY", "STRIPE_SECRET_KEY", "STRIPE_WEBHOOK_SECRET"):
+        monkeypatch.delenv(name, raising=False)
     get_settings.cache_clear()
     engine = make_engine()
     Base.metadata.create_all(engine)
@@ -34,4 +40,18 @@ def data_dir(_isolated_data_dir: Path) -> Path:
 
 @pytest.fixture
 def client() -> TestClient:
+    return TestClient(create_app(), raise_server_exceptions=False)
+
+
+PASSWORD = "correct horse battery"
+
+
+def signup(client: TestClient, email: str, password: str = PASSWORD) -> TestClient:
+    """Create an account on `client` (it keeps the session cookie)."""
+    res = client.post("/auth/signup", json={"email": email, "password": password})
+    assert res.status_code == 201, res.text
+    return client
+
+
+def new_client() -> TestClient:
     return TestClient(create_app(), raise_server_exceptions=False)

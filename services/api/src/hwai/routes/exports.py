@@ -7,6 +7,8 @@ from fastapi import APIRouter, Response
 from PIL import Image
 
 from hwai import storage
+from hwai.billing import billing_required, checkout_hint, is_paid
+from hwai.config import get_settings
 from hwai.deps import DbDep, UserDep
 from hwai.errors import ApiError
 from hwai.export import export_pdf, export_png, image_size_points
@@ -29,7 +31,14 @@ def export_render(
 ) -> Response:
     chat = get_owned_chat(db, user, chat_id)
     render = get_owned_render(db, chat, version)
-    chat_file = target_file(db, chat)
+    chat_file = target_file(db, chat)  # safety first: a refused file is never exportable
+    if billing_required(get_settings()) and not is_paid(db, chat.id, version):
+        raise ApiError(
+            402,
+            "payment_required",
+            "Please pay to export this version.",
+            checkout_hint(chat, version),
+        )
     assert render.preview_path is not None
     pages: list[Image.Image] = []
     n = 1

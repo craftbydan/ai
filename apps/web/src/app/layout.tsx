@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import "@fontsource-variable/hanken-grotesk";
 import "./globals.css";
 import { SiteHeader } from "@/components/site-header";
+import { AuthGate, AuthProvider } from "@/components/auth";
 import { SiteFooter } from "@/components/site-footer";
 
 // Caveat, SIL Open Font License 1.1 (see ./fonts/OFL.txt). Used for headings only.
@@ -32,9 +33,11 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         >
           Skip to content
         </a>
-        <SiteHeader />
-        {children}
-        <SiteFooter />
+        <AuthProvider>
+          <SiteHeader />
+          <AuthGate>{children}</AuthGate>
+          <SiteFooter />
+        </AuthProvider>
       </body>
     </html>
   );

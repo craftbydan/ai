@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { ApiError, getHealth } from "../src/lib/api";
+import { ApiError, getHealth, getMe } from "../src/lib/api";
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -39,5 +39,35 @@ describe("getHealth", () => {
     mockFetch(async () => new Response("<html>bad gateway</html>", { status: 502 }));
     const err = await getHealth().catch((e: unknown) => e);
     expect(err).toMatchObject({ code: "unknown", status: 502 });
+  });
+});
+
+describe("credentials and payment errors", () => {
+  it("sends the session cookie on every call", async () => {
+    const fetchMock = vi.fn(async (...args: [string, RequestInit?]) => {
+      void args;
+      return Response.json({ id: "u1", email: "a@example.com" });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    await getMe();
+    expect(fetchMock.mock.calls[0]?.[1]).toMatchObject({ credentials: "include" });
+  });
+
+  it("keeps the checkout hint of a 402", async () => {
+    mockFetch(async () =>
+      Response.json(
+        {
+          error: {
+            code: "payment_required",
+            message: "Please pay to export this version.",
+            checkout: { method: "POST", path: "/chats/c1/checkout?version=2" },
+          },
+        },
+        { status: 402 },
+      ),
+    );
+    const err = await getHealth().catch((e: unknown) => e);
+    expect(err).toMatchObject({ status: 402, code: "payment_required" });
+    expect((err as ApiError).checkout?.path).toBe("/chats/c1/checkout?version=2");
   });
 });

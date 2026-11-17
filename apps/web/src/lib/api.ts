@@ -9,8 +9,24 @@ export interface HealthResponse {
   ocr: string;
 }
 
+export interface CheckoutHint {
+  method: string;
+  path: string;
+}
+
 export interface ApiErrorBody {
-  error: { code: string; message: string };
+  error: { code: string; message: string; checkout?: CheckoutHint };
+}
+
+export interface Me {
+  id: string;
+  email: string;
+}
+
+export interface CheckoutSession {
+  checkout_url: string;
+  amount_thb: number;
+  pages: number;
 }
 
 export type HandStatus = "empty" | "learning" | "ready" | "failed";
@@ -92,12 +108,15 @@ export interface FileAnalysis {
 export class ApiError extends Error {
   readonly code: string;
   readonly status: number;
+  /** Present on a 402: where to start checkout for the version that needs paying. */
+  readonly checkout: CheckoutHint | null;
 
-  constructor(code: string, message: string, status: number) {
+  constructor(code: string, message: string, status: number, checkout: CheckoutHint | null = null) {
     super(message);
     this.name = "ApiError";
     this.code = code;
     this.status = status;
+    this.checkout = checkout;
   }
 }
 
@@ -126,7 +145,8 @@ function isApiErrorBody(value: unknown): value is ApiErrorBody {
 async function send(path: string, init?: RequestInit): Promise<Response> {
   let res: Response;
   try {
-    res = await fetch(`${API_BASE_URL}${path}`, init);
+    // The session cookie lives on the API origin, so every call sends credentials.
+    res = await fetch(`${API_BASE_URL}${path}`, { ...init, credentials: "include" });
   } catch {
     throw new ApiError(
       "network",
@@ -142,7 +162,7 @@ async function send(path: string, init?: RequestInit): Promise<Response> {
       body = undefined;
     }
     if (isApiErrorBody(body)) {
-      throw new ApiError(body.error.code, body.error.message, res.status);
+      throw new ApiError(body.error.code, body.error.message, res.status, body.error.checkout ?? null);
     }
     throw new ApiError("unknown", `The API returned an unexpected error (${res.status}).`, res.status);
   }
@@ -164,6 +184,28 @@ function jsonBody(body: unknown): RequestInit {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   };
+}
+
+export function getMe(): Promise<Me> {
+  return request<Me>("/auth/me");
+}
+
+export function signup(email: string, password: string): Promise<Me> {
+  return request<Me>("/auth/signup", jsonBody({ email, password }));
+}
+
+export function login(email: string, password: string): Promise<Me> {
+  return request<Me>("/auth/login", jsonBody({ email, password }));
+}
+
+export async function logout(): Promise<void> {
+  await send("/auth/logout", { method: "POST" });
+}
+
+export function startCheckout(chatId: string, version: number): Promise<CheckoutSession> {
+  return request<CheckoutSession>(`/chats/${chatId}/checkout?version=${version}`, {
+    method: "POST",
+  });
 }
 
 export function getHealth(): Promise<HealthResponse> {

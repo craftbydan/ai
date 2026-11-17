@@ -1,6 +1,6 @@
 "use client";
 
-import { use, useMemo, useState } from "react";
+import { use, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { Composer } from "@/components/composer";
 import { FileDrop } from "@/components/file-drop";
@@ -10,19 +10,21 @@ import { Notice } from "@/components/notice";
 import { PagePreview } from "@/components/page-preview";
 import { StatusChip } from "@/components/status-chip";
 import {
+  ApiError,
   errorMessage,
   exportRender,
   filePageUrl,
   isRefusal,
   renderPreviewUrl,
   sendMessage,
+  startCheckout,
   uploadChatFile,
 } from "@/lib/api";
 import type { ExportFormat } from "@/lib/api";
 import { useChat, useHand } from "@/lib/hooks";
 
 interface NoticeState {
-  tone: "refusal" | "error";
+  tone: "refusal" | "error" | "info";
   text: string;
 }
 
@@ -40,6 +42,17 @@ export default function ChatPage({ params }: { params: Promise<{ id: string }> }
   const [sending, setSending] = useState(false);
   const [exporting, setExporting] = useState<ExportFormat | null>(null);
   const [page, setPage] = useState(1);
+
+  // Back from Stripe Checkout: tell the person what to expect (the webhook unlocks the export).
+  useEffect(() => {
+    const q = new URLSearchParams(window.location.search);
+    const text = q.get("paid")
+      ? "Thanks. Payment is confirmed in a moment; then Export unlocks. If it asks again, wait a few seconds and press Export once more."
+      : q.get("canceled")
+        ? "Payment was cancelled. Nothing was charged."
+        : null;
+    if (text) void Promise.resolve().then(() => setNotice({ tone: "info", text }));
+  }, []);
 
   const latestFile = chat?.files.at(-1) ?? null;
   const usable = latestFile && latestFile.safety_status === "ok" ? latestFile : null;
@@ -103,7 +116,19 @@ export default function ChatPage({ params }: { params: Promise<{ id: string }> }
       a.remove();
       setTimeout(() => URL.revokeObjectURL(url), 10_000);
     } catch (err) {
-      setNotice(toNotice(err));
+      if (err instanceof ApiError && err.code === "payment_required") {
+        // Billing is on and this version is unpaid: start a Stripe Checkout and go there.
+        try {
+          setNotice({ tone: "info", text: "Taking you to payment…" });
+          const session = await startCheckout(id, version);
+          window.location.href = session.checkout_url;
+          return;
+        } catch (checkoutErr) {
+          setNotice(toNotice(checkoutErr));
+        }
+      } else {
+        setNotice(toNotice(err));
+      }
     } finally {
       setExporting(null);
     }
@@ -235,7 +260,7 @@ export default function ChatPage({ params }: { params: Promise<{ id: string }> }
             <Notice
               tone={shownNotice.tone}
               title={shownNotice.tone === "refusal" ? "Not this one" : undefined}
-              testId={shownNotice.tone === "refusal" ? "notice-refusal" : "notice-error"}
+              testId={`notice-${shownNotice.tone}`}
             >
               {shownNotice.text}
             </Notice>

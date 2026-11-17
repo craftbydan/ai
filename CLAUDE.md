@@ -69,7 +69,7 @@ handwriting-ai/
 - `messages(id, chat_id, role[user|assistant|tool], content_json, created_at)`
 - `renders(id, chat_id, version, placements_json, preview_path, created_at)`
 - `exports(id, render_id, format[pdf|png], file_path, created_at)`
-- `payments(id, user_id, chat_id, stripe_session_id, status, amount_thb, pages, created_at)`  *(last prompt)*
+- `payments(id, user_id, chat_id, render_version, stripe_session_id, status[pending|paid], amount_thb, pages, created_at)`  *(Prompt 11; render_version added so a payment unlocks exactly one render version)*
 Access rule: every row is reachable only by its owning user. Every route checks ownership.
 
 ## Key interfaces (do not change names; later prompts rely on them)
@@ -166,3 +166,9 @@ Injection: `get_llm_client()` (FastAPI dependency; tests override it with a scri
 - `CLASSIFIER=real` (default) or `CLASSIFIER=mock:<kind>` (test switch, skips the LLM; ignored when `ENV=production`). Tests default to `mock:ok` in `tests/conftest.py`.
 - Signatures: regions get `signature: bool` in `analysis_json` (pixel heuristic in `safety/signature.py` + classifier boxes). `render_placements` raises 403 `signature_blocked` for flagged regions or signature-like text (`looks_like_signature_text`); a user message like "sign it Dan" gets `SIGNATURE_REFUSAL` without any model call or render. The LLM client plumbing now lives in `hwai/llm.py` (re-exported from `agent/loop.py`).
 - Hand upload responses and `GET /hand` carry `own_hand_confirmed_at` and `own_hand_statement`.
+
+## Accounts and billing (Prompt 11)
+Sessions: itsdangerous-signed cookie `hwai_session` (user id only; HTTP-only, SameSite=Lax, Secure outside dev, 14 days), passwords hashed with argon2-cffi, login rate limit 5 failures / 10 min per (email, IP) in memory (per process). `SECRET_KEY` is required outside `ENV=dev`; in dev an unset key uses a per-process random key with a warning. `<YOUR_...>` placeholders count as unset. `STRIPE_SECRET_KEY` set but not `sk_test_...` fails startup (`auth.check_startup_settings`, run by `create_app`).
+Dev switches (ENV=dev only, ignored otherwise): `DEV_USER=1` (dev stub user when no cookie), `BILLING=off` (skip payment). Tests default to both (conftest); auth/billing tests turn them off. e2e: phase 1 DEV_USER=1 BILLING=off, phase 2 (auth.spec.ts) DEV_USER=0.
+Billing: `POST /chats/{id}/checkout?version=N` (PromptPay, THB, satang amounts; `PRICING_MODE=per_document` 20 THB or `per_page` 1 THB x pages; > MAX_PAGES_PER_DOCUMENT -> 422 `too_many_pages`), `POST /billing/webhook` (Stripe signature verified locally, idempotent, only `payment_status=paid` and matching amount unlocks), export 402 `payment_required` with `error.checkout` hint. Stripe is reached only via `billing.StripeGateway` (tests override `get_gateway`). `GET /admin/cost` (ENV=dev only) returns data/cost_report.json. Live Stripe flow: BLOCKED (no keys).
+Resolved versions added: argon2-cffi 25.1.0, stripe 17.0.0, itsdangerous 2.2.0, email-validator 2.4.0.

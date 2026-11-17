@@ -21,6 +21,10 @@ dependencies = [
   "reportlab",
   "pikepdf",
   "anthropic",
+  "argon2-cffi",
+  "stripe",
+  "itsdangerous",
+  "email-validator",
 ]
 
 [project.optional-dependencies]

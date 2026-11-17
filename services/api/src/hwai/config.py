@@ -3,6 +3,7 @@
 from functools import lru_cache
 from pathlib import Path
 
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -34,10 +35,21 @@ class Settings(BaseSettings):
     onedm_batch_size: int = 32
     gpu_cost_thb_per_hour: float = 0.0
 
-    stripe_secret_key: str = ""
+    dev_user: bool = False  # ENV=dev only: act as the seeded dev user when nobody is logged in
+    stripe_secret_key: str = ""  # TEST keys only (sk_test_); anything else fails startup
     stripe_webhook_secret: str = ""
+    billing: str = "on"  # on | off (off is honoured only when ENV=dev)
+    pricing_mode: str = "per_document"  # per_document | per_page
     price_thb_per_document: int = 20
+    price_thb_per_page: int = 1
     max_pages_per_document: int = 10
+
+    @field_validator("secret_key", "stripe_secret_key", "stripe_webhook_secret", mode="after")
+    @classmethod
+    def _placeholder_is_unset(cls, value: str) -> str:
+        """`<YOUR_...>` values copied from .env.example count as not set."""
+        value = value.strip()
+        return "" if value.startswith("<") and value.endswith(">") else value
 
 
 @lru_cache

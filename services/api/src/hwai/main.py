@@ -1,23 +1,31 @@
 """FastAPI app factory."""
 
+from typing import Any
+
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
+from hwai.auth import LoginRateLimiter, check_startup_settings
 from hwai.config import get_settings
 from hwai.errors import ApiError
-from hwai.routes import chats, exports, hand, health, messages, renders
+from hwai.routes import admin, auth, billing, chats, exports, hand, health, messages, renders
 
 
-def error_response(status: int, code: str, message: str) -> JSONResponse:
-    return JSONResponse(status_code=status, content={"error": {"code": code, "message": message}})
+def error_response(
+    status: int, code: str, message: str, extra: dict[str, Any] | None = None
+) -> JSONResponse:
+    body: dict[str, Any] = {"code": code, "message": message, **(extra or {})}
+    return JSONResponse(status_code=status, content={"error": body})
 
 
 def create_app() -> FastAPI:
     settings = get_settings()
+    check_startup_settings(settings)  # raises a clear error instead of starting unsafely
     app = FastAPI(title="handwriting-ai")
+    app.state.login_limiter = LoginRateLimiter()
     app.add_middleware(
         CORSMiddleware,
         allow_origins=[settings.web_base_url],
@@ -28,7 +36,7 @@ def create_app() -> FastAPI:
 
     @app.exception_handler(ApiError)
     async def api_error(_: Request, exc: ApiError) -> JSONResponse:
-        return error_response(exc.status, exc.code, exc.message)
+        return error_response(exc.status, exc.code, exc.message, exc.extra)
 
     @app.exception_handler(StarletteHTTPException)
     async def http_error(_: Request, exc: StarletteHTTPException) -> JSONResponse:
@@ -46,6 +54,9 @@ def create_app() -> FastAPI:
         return error_response(500, "internal", "Something went wrong on our side.")
 
     app.include_router(health.router)
+    app.include_router(auth.router)
+    app.include_router(billing.router)
+    app.include_router(admin.router)
     app.include_router(hand.router)
     app.include_router(chats.router)
     app.include_router(renders.router)

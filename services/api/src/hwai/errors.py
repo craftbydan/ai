@@ -1,9 +1,14 @@
 """API error type carrying a machine-readable code."""
 
+from typing import Any
+
 
 class ApiError(Exception):
-    def __init__(self, status: int, code: str, message: str) -> None:
+    def __init__(
+        self, status: int, code: str, message: str, extra: dict[str, Any] | None = None
+    ) -> None:
         super().__init__(message)
         self.status = status
         self.code = code
         self.message = message
+        self.extra = extra or {}

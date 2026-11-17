@@ -13,7 +13,7 @@
 | 8 | Chat agent | done | e9eb6e2 | live check skipped (no ANTHROPIC_API_KEY); model id claude-haiku-5-5 unconfirmed; est. cost uses placeholder USD prices |
 | 9 | Safety rules | done | 8d84cb1 | live LLM classification skipped (no key); local fallback used without key |
 | 10 | Web app | done | e708058 | design skills pre-flight audit not run separately (rules followed by hand) |
-| 11 | Accounts and billing (test mode) | pending | | needs Stripe test keys |
+| 11 | Accounts and billing (test mode) | done (live Stripe flow BLOCKED) | | no Stripe keys/SECRET_KEY supplied; all Stripe calls mocked in tests |
 | 12 | Testing and hardening | pending | | |
 
 ## What exists now
@@ -37,10 +37,12 @@ Prompt 9 adds: safety/ (rules, classify, signature), hwai/llm.py (get_llm_client
 
 Prompt 9 adds: safety/ (rules, classify, signature), CLASSIFIER=real|mock:<kind>, 422 document_refused, 403 file_refused / signature_blocked, own_hand statement on /hand, hwai/llm.py.
 
+Prompt 11 adds: auth.py (cookie sessions, argon2, rate limiter, startup guard), routes/auth.py, billing.py + routes/billing.py (checkout, webhook), routes/admin.py (GET /admin/cost, dev only), payments table (migration 0004), DEV_USER / BILLING / PRICING_MODE / PRICE_THB_PER_PAGE settings, web /login /signup, account nav, AuthGate redirect, 402 -> checkout in the chat page, credentials: include, e2e auth.spec.ts (two-phase e2e.sh), tests/test_accounts_billing.py.
+
 ## Waiting on you
 - Prompt 4: NVIDIA GPU machine, ONEDM_WEIGHTS_PATH, GPU_COST_THB_PER_HOUR
 - Prompt 8: ANTHROPIC_API_KEY (live runs only)
-- Prompt 11: SECRET_KEY, STRIPE_SECRET_KEY (sk_test_), STRIPE_WEBHOOK_SECRET
+- Prompt 11 (live Stripe check only): SECRET_KEY (needed outside dev), STRIPE_SECRET_KEY (sk_test_), STRIPE_WEBHOOK_SECRET, PromptPay enabled in the Stripe test dashboard
 
 ## Deviations
 - P10 minor visual issues (checker): ruled-line bg runs through body text in /chats and empty-chat empty states; sparse right column on home at 1440; preview frame capped at 72vh; low-contrast disabled Send button. Added GET /chats, latest_render_version, safety_message, X-Test-Classifier header, AGENT=mock.
