@@ -9,7 +9,7 @@
 | 4 | One-DM renderer and cost measurement | blocked (GPU) | ffb33f3 | CPU-side code and tests pass independent check; GPU criteria unverified |
 | 5 | Learn the hand | done | 65191c2 | OCR=trocr run skipped (no torch) |
 | 6 | Read the target page | done | 05ba5f3 | margin-line bug found by checker, fixed + tested |
-| 7 | Layout engine | done | | |
+| 7 | Layout engine | done | 25e6041 | |
 | 8 | Chat agent | pending | | |
 | 9 | Safety rules | pending | | |
 | 10 | Web app | pending | | |
