@@ -27,7 +27,7 @@ export function ApiStatus() {
   if (state.kind === "loading") return <p role="status">API: checking…</p>;
   if (state.kind === "ok") return <p role="status">API: ok</p>;
   return (
-    <p role="alert" className="text-red-700">
+    <p role="alert" className="text-crit">
       API error: {state.message}
     </p>
   );

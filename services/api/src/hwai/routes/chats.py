@@ -1,15 +1,15 @@
 import io
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Depends, File, Response, UploadFile
-from sqlalchemy import select
+from fastapi import APIRouter, Depends, File, Header, Response, UploadFile
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from hwai import storage
 from hwai.deps import DbDep, UserDep
 from hwai.errors import ApiError
 from hwai.llm import get_llm_client
-from hwai.models import Chat, ChatFile, Hand, Message, User
+from hwai.models import Chat, ChatFile, Hand, Message, Render, User
 from hwai.page.analyze import analyze_pages, load_pages
 from hwai.page.regions import Region
 from hwai.pdfio import inspect_file
@@ -44,6 +44,22 @@ def create_chat(db: DbDep, user: UserDep) -> Chat:
     return chat
 
 
+@router.get("/chats", response_model=list[ChatOut])
+def list_chats(db: DbDep, user: UserDep) -> list[Chat]:
+    return list(
+        db.scalars(
+            select(Chat).where(Chat.user_id == user.id).order_by(Chat.created_at.desc(), Chat.id)
+        ).all()
+    )
+
+
+def file_out(f: ChatFile) -> ChatFileOut:
+    out = ChatFileOut.model_validate(f, from_attributes=True)
+    if f.safety_status == "refused":
+        out.safety_message = message_for(f.safety_reason)
+    return out
+
+
 @router.get("/chats/{chat_id}", response_model=ChatDetail)
 def read_chat(chat_id: str, db: DbDep, user: UserDep) -> ChatDetail:
     chat = get_owned_chat(db, user, chat_id)
@@ -53,9 +69,11 @@ def read_chat(chat_id: str, db: DbDep, user: UserDep) -> ChatDetail:
     messages = db.scalars(
         select(Message).where(Message.chat_id == chat.id).order_by(Message.created_at)
     ).all()
+    latest = db.scalar(select(func.max(Render.version)).where(Render.chat_id == chat.id))
     return ChatDetail(
         **ChatOut.model_validate(chat, from_attributes=True).model_dump(),
-        files=[ChatFileOut.model_validate(f, from_attributes=True) for f in files],
+        latest_render_version=latest,
+        files=[file_out(f) for f in files],
         messages=[MessageOut.model_validate(m, from_attributes=True) for m in messages],
     )
 
@@ -67,6 +85,7 @@ def upload_chat_file(
     db: DbDep,
     user: UserDep,
     client: Annotated[Any, Depends(get_llm_client)],
+    x_test_classifier: Annotated[str | None, Header()] = None,
 ) -> ChatFile:
     chat = get_owned_chat(db, user, chat_id)
     data = read_upload(file)
@@ -75,7 +94,7 @@ def upload_chat_file(
     chat_file = ChatFile(chat_id=chat.id, file_path=rel, kind=info.kind, page_count=info.page_count)
     try:
         pages = load_pages(storage.absolute_path(rel))
-        doc = classify_document(pages, client)
+        doc = classify_document(pages, client, x_test_classifier)
         if doc.kind != "ok":
             reason = doc.kind + (":fallback" if doc.source == "fallback" else "")
             chat_file.safety_status = "refused"

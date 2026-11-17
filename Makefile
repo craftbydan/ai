@@ -41,12 +41,7 @@ test:
 	cd $(WEB_DIR) && npm test
 
 e2e:
-	@export RENDERER=fake OCR=fake; \
-	(cd $(API_DIR) && exec $(VENV)/bin/uvicorn hwai.main:app --app-dir src --port 8000) & API_PID=$$!; \
-	(cd $(WEB_DIR) && exec npm run dev) & WEB_PID=$$!; \
-	trap 'kill $$API_PID $$WEB_PID 2>/dev/null' EXIT; \
-	for i in $$(seq 1 60); do curl -sf localhost:8000/health >/dev/null && curl -sf localhost:3000 >/dev/null && break; sleep 1; done; \
-	cd $(WEB_DIR) && npx playwright test
+	./scripts/e2e.sh
 
 migrate:
 	cd $(API_DIR) && $(VENV)/bin/alembic upgrade head

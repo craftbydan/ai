@@ -12,7 +12,7 @@
 | 7 | Layout engine | done | 25e6041 | |
 | 8 | Chat agent | done | e9eb6e2 | live check skipped (no ANTHROPIC_API_KEY); model id claude-haiku-5-5 unconfirmed; est. cost uses placeholder USD prices |
 | 9 | Safety rules | done | 8d84cb1 | live LLM classification skipped (no key); local fallback used without key |
-| 10 | Web app | pending | | |
+| 10 | Web app | done (uncommitted) | | AGENT=mock, X-Test-Classifier header, GET /chats, chat detail latest_render_version + file safety_message; make e2e via scripts/e2e.sh |
 | 11 | Accounts and billing (test mode) | pending | | needs Stripe test keys |
 | 12 | Testing and hardening | pending | | |
 

@@ -1,0 +1,101 @@
+/* Design tokens for handwriting-ai.
+   Concept: a sheet of writing paper. Paper, ink, a red margin line, blue ruled lines.
+   Light only: the product is paper. One light source (overhead, slightly front). */
+
+:root {
+  color-scheme: light;
+
+  /* Colour: hue-tinted neutrals (warm paper 85, cool ink 265) */
+  --paper-0: oklch(0.985 0.012 88);     /* page canvas */
+  --paper-1: oklch(0.955 0.018 86);     /* raised / sunken wells */
+  --paper-2: oklch(1 0 0);              /* floating sheet */
+  --rule: oklch(0.82 0.05 235);         /* ruled-line blue, decorative */
+  --hairline: oklch(0.25 0.03 265 / 0.14);
+  --hairline-strong: oklch(0.25 0.03 265 / 0.3);
+
+  --ink-high: oklch(0.24 0.045 265);    /* 13.9:1 on paper-0 */
+  --ink-mid: oklch(0.42 0.035 265);     /* 8.1:1 */
+  --ink-low: oklch(0.5 0.03 265);       /* 5.9:1 (never below this for text) */
+
+  --pen: oklch(0.45 0.15 262);          /* accent: fountain-pen blue, 7.3:1 */
+  --pen-hover: oklch(0.39 0.15 262);
+  --pen-quiet: color-mix(in oklch, var(--pen) 10%, transparent);
+  --on-pen: oklch(0.985 0.01 262);
+
+  --margin-red: oklch(0.56 0.17 25);    /* the margin line; signal for refusals */
+  --signal-ok: oklch(0.45 0.11 150);
+  --signal-ok-bg: oklch(0.94 0.04 150);
+  --signal-wait: oklch(0.45 0.1 70);
+  --signal-wait-bg: oklch(0.95 0.06 85);
+  --signal-crit: oklch(0.45 0.16 25);
+  --signal-crit-bg: oklch(0.95 0.035 25);
+  --notice-bg: oklch(0.95 0.045 80);
+  --notice-ink: oklch(0.35 0.07 60);
+
+  /* Type */
+  --font-hand: var(--font-caveat), "Segoe Print", "Bradley Hand", cursive;
+  --font-body: "Hanken Grotesk Variable", "Hanken Grotesk", ui-sans-serif, system-ui, sans-serif;
+  --text-xs: 0.8125rem;
+  --text-sm: 0.9375rem;
+  --text-base: 1.0625rem;
+  --text-lg: 1.25rem;
+  --text-xl: 1.625rem;
+  --hand-lg: clamp(2rem, 1.4rem + 2.4vw, 3rem);
+  --hand-xl: clamp(2.75rem, 1.6rem + 5.2vw, 5.25rem);
+
+  /* Spacing scale: 4 8 12 16 24 32 48 64 96 */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 48px;
+  --space-8: 64px;
+  --space-9: 96px;
+
+  /* Radius roles (concentric: inner = outer - padding) */
+  --r-inline: 4px;
+  --r-control: 8px;
+  --r-surface: 14px;
+  --r-pill: 999px;
+
+  /* Paper-stock elevation, three levels, Y offset only */
+  --lift-1: 0 1px 2px -1px oklch(0.25 0.03 265 / 0.12);
+  --lift-2: 0 8px 24px -14px oklch(0.25 0.03 265 / 0.2);
+  --lift-3: 0 18px 44px -20px oklch(0.25 0.03 265 / 0.28);
+
+  /* Motion */
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --dur-micro: 120ms;
+  --dur-element: 200ms;
+
+  --tap: 44px;
+}
+
+@supports not (color: oklch(0 0 0)) {
+  :root {
+    --paper-0: #fbf8ef;
+    --paper-1: #f3efe3;
+    --paper-2: #fff;
+    --rule: #a9c4e0;
+    --hairline: rgb(30 33 60 / 0.14);
+    --hairline-strong: rgb(30 33 60 / 0.3);
+    --ink-high: #1c2140;
+    --ink-mid: #424a66;
+    --ink-low: #566078;
+    --pen: #2e4fc1;
+    --pen-hover: #243e9e;
+    --pen-quiet: rgb(46 79 193 / 0.1);
+    --on-pen: #f7f8ff;
+    --margin-red: #cf4b3f;
+    --signal-ok: #1f6a45;
+    --signal-ok-bg: #e0f1e6;
+    --signal-wait: #7a5400;
+    --signal-wait-bg: #fbf0cc;
+    --signal-crit: #a8321f;
+    --signal-crit-bg: #fbe9e5;
+    --notice-bg: #fbf0d6;
+    --notice-ink: #5b3f10;
+  }
+}

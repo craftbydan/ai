@@ -34,6 +34,37 @@ HISTORY_TURNS = 6
 APOLOGY = "Sorry, I could not finish that. Please try again with a simpler request."
 
 
+def mock_agent_enabled() -> bool:
+    """AGENT=mock test switch (fixed placement, no API key). Never active in production."""
+    s = get_settings()
+    return s.agent == "mock" and s.env.lower() not in ("prod", "production")
+
+
+def run_mock_agent(db: Session, chat: Chat, text: str) -> "AgentResult":
+    """Fixed placement for end-to-end tests: the user's text, centred, on the first blank
+    region (else the first line or box) that is not a signature area. Uses the real render
+    code, so previews and exports are genuine."""
+    chat_file = target_file(db, chat)
+    analysis: dict[str, Any] = chat_file.analysis_json or {"pages": []}
+    regions = [Region.model_validate(r) for pg in analysis["pages"] for r in pg["regions"]]
+    usable = [r for r in regions if not r.signature]
+    pick = next((r for r in usable if r.kind == "blank"), usable[0] if usable else None)
+    _save(db, chat, "user", {"text": text, "usage": _usage()})
+    if pick is None:
+        reply = "I could not find a free area to write on this file."
+        _save(db, chat, "assistant", {"reply": reply, "content": [], "usage": _usage()})
+        return AgentResult(reply=reply, render_version=None, preview_url=None)
+    words = text.strip()
+    if words.lower().startswith("write "):
+        words = words[6:].strip() or text.strip()
+    out = render_placements(
+        db, chat, [Placement(region_id=pick.id, text=words, align="center", seed=1)]
+    )
+    reply = f"Done. I wrote \u201c{words}\u201d in the {pick.kind} area. Ask for changes any time."
+    _save(db, chat, "assistant", {"reply": reply, "content": [], "usage": _usage(), "mock": True})
+    return AgentResult(reply=reply, render_version=out.version, preview_url=out.preview_url)
+
+
 def check_chat_file_allowed(chat_file: ChatFile) -> None:
     """Raise ApiError (403 file_refused) if this file was refused at upload."""
     check_file_allowed(chat_file)
@@ -120,6 +151,8 @@ def run_agent(db: Session, chat: Chat, text: str, client: Any) -> AgentResult:
             render_version=last.version if last else None,
             preview_url=f"/chats/{chat.id}/renders/{last.version}/preview.png" if last else None,
         )
+    if mock_agent_enabled():
+        return run_mock_agent(db, chat, text)
     _ = client.messages  # resolve the client (503 if unconfigured) before any DB write
     analysis: dict[str, Any] = chat_file.analysis_json or {"pages": []}
     regions_by_page: dict[int, list[Region]] = {

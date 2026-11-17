@@ -1,1 +1,179 @@
 @import "tailwindcss";
+@import "../styles/tokens.css";
+
+@theme inline {
+  --color-paper: var(--paper-0);
+  --color-paper-well: var(--paper-1);
+  --color-sheet: var(--paper-2);
+  --color-rule: var(--rule);
+  --color-hairline: var(--hairline);
+  --color-hairline-strong: var(--hairline-strong);
+  --color-ink: var(--ink-high);
+  --color-ink-mid: var(--ink-mid);
+  --color-ink-low: var(--ink-low);
+  --color-pen: var(--pen);
+  --color-pen-hover: var(--pen-hover);
+  --color-pen-quiet: var(--pen-quiet);
+  --color-on-pen: var(--on-pen);
+  --color-margin: var(--margin-red);
+  --color-ok: var(--signal-ok);
+  --color-ok-bg: var(--signal-ok-bg);
+  --color-wait: var(--signal-wait);
+  --color-wait-bg: var(--signal-wait-bg);
+  --color-crit: var(--signal-crit);
+  --color-crit-bg: var(--signal-crit-bg);
+  --color-notice: var(--notice-bg);
+  --color-notice-ink: var(--notice-ink);
+  --font-hand: var(--font-hand);
+  --font-sans: var(--font-body);
+  --radius-inline: var(--r-inline);
+  --radius-control: var(--r-control);
+  --radius-surface: var(--r-surface);
+  --shadow-lift-1: var(--lift-1);
+  --shadow-lift-2: var(--lift-2);
+  --shadow-lift-3: var(--lift-3);
+}
+
+html {
+  background: var(--paper-0);
+}
+
+body {
+  background: var(--paper-0);
+  color: var(--ink-high);
+  font-family: var(--font-body);
+  font-size: var(--text-base);
+  line-height: 1.55;
+  min-height: 100dvh;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1,
+h2,
+h3 {
+  text-wrap: balance;
+}
+
+.hand {
+  font-family: var(--font-hand);
+  font-weight: 600;
+  line-height: 1.02;
+  letter-spacing: 0;
+}
+
+:focus-visible {
+  outline: 2px solid var(--pen);
+  outline-offset: 2px;
+  border-radius: var(--r-inline);
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  min-height: var(--tap);
+  padding: 0 var(--space-5);
+  border-radius: var(--r-control);
+  font-weight: 600;
+  font-size: var(--text-sm);
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition:
+    background-color var(--dur-micro) var(--ease-out),
+    transform var(--dur-micro) var(--ease-out),
+    opacity var(--dur-micro) var(--ease-out);
+}
+.btn:active:not(:disabled) {
+  transform: translateY(1px) scale(0.985);
+}
+.btn:disabled,
+.btn[aria-disabled="true"] {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.btn-primary {
+  background: var(--pen);
+  color: var(--on-pen);
+}
+.btn-primary:hover:not(:disabled) {
+  background: var(--pen-hover);
+}
+.btn-quiet {
+  background: var(--paper-2);
+  color: var(--ink-high);
+  border-color: var(--hairline-strong);
+}
+.btn-quiet:hover:not(:disabled) {
+  background: var(--paper-1);
+}
+.btn[aria-pressed="true"] {
+  background: var(--pen-quiet);
+  border-color: var(--pen);
+  color: var(--pen);
+}
+
+.sheet {
+  background: var(--paper-2);
+  border: 1px solid var(--hairline);
+  border-radius: var(--r-surface);
+  box-shadow: var(--lift-2);
+}
+
+/* Ruled paper: blue lines every 32px, used on the hero sheet */
+.ruled {
+  background-image: repeating-linear-gradient(
+    to bottom,
+    transparent 0,
+    transparent 31px,
+    var(--rule) 31px,
+    var(--rule) 32px
+  );
+}
+
+.link {
+  color: var(--pen);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-thickness: 1.5px;
+}
+.link:hover {
+  color: var(--pen-hover);
+}
+
+.skeleton {
+  background: linear-gradient(90deg, var(--paper-1), var(--paper-0), var(--paper-1));
+  background-size: 200% 100%;
+  animation: shimmer 1.4s linear infinite;
+  border-radius: var(--r-control);
+}
+@keyframes shimmer {
+  to {
+    background-position: -200% 0;
+  }
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(2px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.rise {
+  animation: rise var(--dur-element) var(--ease-out) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

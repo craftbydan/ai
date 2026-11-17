@@ -101,21 +101,28 @@ def parse_answer(raw: str) -> DocClass | None:
     return DocClass(kind, conf, tuple(boxes))
 
 
-def _mock() -> DocClass | None:
+def _mock(override: str | None = None) -> DocClass | None:
+    """CLASSIFIER=mock:<kind> test switch. `override` (the `X-Test-Classifier` request header)
+    may change the kind per request, but only when the server itself already runs a mock
+    classifier, so a real deployment can never be steered by a header."""
     spec = get_settings().classifier
     if not spec.startswith("mock:"):
         return None
     if get_settings().env.lower() in ("prod", "production"):
         return None  # the test switch never applies in production
+    if override is not None and override.startswith("mock:"):
+        spec = override
     kind = spec.split(":", 1)[1]
     if kind not in KINDS:
         raise ValueError(f"CLASSIFIER={spec!r}: unknown kind")
     return DocClass(kind, 1.0, source="mock")
 
 
-def classify_document(page_images: list[Image.Image], client: Any = None) -> DocClass:
+def classify_document(
+    page_images: list[Image.Image], client: Any = None, test_override: str | None = None
+) -> DocClass:
     """Classify an uploaded target document (one vision call)."""
-    mocked = _mock()
+    mocked = _mock(test_override)
     if mocked is not None:
         return mocked
     result: DocClass | None = None

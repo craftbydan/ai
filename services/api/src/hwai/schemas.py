@@ -49,6 +49,7 @@ class ChatFileOut(BaseModel):
     page_count: int
     safety_status: str
     safety_reason: str | None
+    safety_message: str | None = None
     created_at: datetime
 
 
@@ -67,6 +68,7 @@ class ChatOut(BaseModel):
 
 
 class ChatDetail(ChatOut):
+    latest_render_version: int | None = None
     files: list[ChatFileOut]
     messages: list[MessageOut]
 
