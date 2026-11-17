@@ -146,3 +146,10 @@ next 16.4.6, react 19.3.1, react-dom 19.3.1, typescript 6.0.3, tailwindcss 4.3.5
 Fixture font: Caveat (variable font `Caveat[wght].ttf`, saved as `services/api/tests/fixtures/Caveat.ttf`, downloaded from github.com/google/fonts/ofl/caveat), licence in `fixtures/OFL.txt` (SIL OFL 1.1).
 
 Notes: `make dev` and `make migrate` set `DATA_DIR` to `<repo>/data`. If Playwright's bundled browser is not installed, set `PW_CHROMIUM_PATH` to a Chromium binary before `make e2e`.
+
+## One-DM (Prompt 4)
+Pinned commit: `dde2205a70a2c70d1786503d198a795358c80ee4` (github.com/dailenson/One-DM, MIT, cloned to gitignored `vendor/One-DM`, checked out by `make install-ml`).
+One-DM has no inference function, only `test.py` (multi-GPU, dataset-driven). `render/onedm.py` re-uses its real pieces the way `test.py` does: `parse_config` (configs/IAM64.yml), `models.unet.UNetModel`, `models.diffusion.Diffusion.ddim_sample`, `data_loader.loader.ContentData`, and the Stable Diffusion 1.5 `AutoencoderKL` (`ONEDM_VAE_PATH`). Needs from the One-DM downloads: the checkpoint `One-DM-ckpt.pt` (`ONEDM_WEIGHTS_PATH`) and `data/unifont.pickle` inside `vendor/One-DM` (ships with its dataset zip; not in the git repo).
+Conventions: style sample = 64 px high greyscale, 128..352 px wide, plus a Laplace map; content characters limited to One-DM's 77-char set; output = 64 px high, 32 px per character. Error codes: `no_style_ref`, `unsupported_character`, `onedm_not_installed`, `onedm_weights_missing`, `ml_not_installed`, `no_gpu`.
+Resolved versions: ML extras NOT installed (no GPU in the build environment); One-DM's own environment.yml pins python 3.8, pytorch 1.13.1/cuda 11.7, diffusers 0.18.2. Record the versions actually resolved by `make install-ml` here once run on the GPU machine.
+Status: GPU verification BLOCKED until a GPU machine, `ONEDM_WEIGHTS_PATH` and `GPU_COST_THB_PER_HOUR` exist. The public weights remain NOT cleared for paid use (see Launch gate).

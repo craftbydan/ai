@@ -24,7 +24,19 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = ["pytest", "httpx", "ruff", "mypy"]
-ml = ["torch", "transformers"]
+ml = [
+  "torch",
+  "torchvision",
+  "transformers",
+  "diffusers",
+  "easydict",
+  "einops",
+  "lmdb",
+  "pyyaml",
+  "six",
+  "packaging",
+  "tqdm",
+]
 
 [tool.setuptools.packages.find]
 where = ["src"]
@@ -34,6 +46,7 @@ where = ["src"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+markers = ["gpu: needs an NVIDIA GPU and One-DM weights (set RUN_GPU_TESTS=1)"]
 pythonpath = ["src"]
 
 [tool.ruff]
@@ -50,5 +63,8 @@ files = ["src"]
 plugins = []
 
 [[tool.mypy.overrides]]
-module = ["cv2.*", "pypdfium2.*", "pikepdf.*", "reportlab.*"]
+module = [
+  "cv2.*", "pypdfium2.*", "pikepdf.*", "reportlab.*",
+  "torch.*", "diffusers.*", "data_loader.*", "models.*", "parse_config.*",
+]
 ignore_missing_imports = true

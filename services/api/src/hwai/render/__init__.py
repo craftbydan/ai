@@ -13,5 +13,7 @@ def get_renderer() -> Renderer:
 
         return FakeRenderer()
     if name == "onedm":
-        raise NotImplementedError("The One-DM renderer arrives in Prompt 4")
+        from hwai.render.onedm import get_onedm_renderer
+
+        return get_onedm_renderer()
     raise ValueError(f"Unknown RENDERER: {name!r} (expected 'fake' or 'onedm')")

@@ -11,7 +11,11 @@ install:
 	test -d $(VENV) || python3 -m venv $(VENV)
 	cd $(API_DIR) && $(VENV)/bin/pip install -e ".[dev]"
 
+ONEDM_COMMIT := dde2205a70a2c70d1786503d198a795358c80ee4
+
 install-ml:
+	test -d vendor/One-DM || git clone https://github.com/dailenson/One-DM vendor/One-DM
+	cd vendor/One-DM && git checkout $(ONEDM_COMMIT)
 	cd $(API_DIR) && $(VENV)/bin/pip install -e ".[dev,ml]"
 
 dev:

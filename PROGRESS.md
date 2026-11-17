@@ -6,7 +6,7 @@
 | 1 | Project setup and tooling | done | b6dd600 | make dev parent ignores SIGTERM (dev ergonomics only) |
 | 2 | Data model, accounts-lite, uploads | done | 7104cea | |
 | 3 | Renderer interface, fake, jitter, export | done | f230798 | |
-| 4 | One-DM renderer and cost measurement | pending | | needs GPU |
+| 4 | One-DM renderer and cost measurement | partial (GPU part BLOCKED) | | code + CPU tests done; GPU checks and measure_cost not run |
 | 5 | Learn the hand | pending | | |
 | 6 | Read the target page | pending | | |
 | 7 | Layout engine | pending | | |
@@ -32,3 +32,5 @@ Prompt 3 adds: render/base.py (StyleRef, WordImage, Renderer), render/fake.py (+
 - P3: StyleRef is a frozen dataclass (text, image); export_png overlay layers are (RGBA image, (x,y)) tuples; export.py imports FONT_PATH from render/fake.py.
 - P2: added ENV setting and error codes own_hand_not_confirmed, file_too_large, too_many_pages; POST /chats creates an empty hand if none.
 - P1: optional PW_CHROMIUM_PATH env in playwright.config.ts (bundled browser path missing); extra e2e smoke spec; python-multipart added to API deps.
+
+Prompt 4 adds (no GPU run yet): render/onedm.py (OneDMRenderer, render_words, pure prepare_style/gray_to_rgba), render/fixture_style.py, get_renderer() -> OneDMRenderer, demo CLI honours RENDERER (+ --style), scripts/measure_cost.py, `gpu` pytest marker, config ONEDM_VAE_PATH / ONEDM_SAMPLING_STEPS / ONEDM_BATCH_SIZE, ML extras in pyproject.

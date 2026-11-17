@@ -65,16 +65,28 @@ def main() -> None:
     parser.add_argument("--out", required=True, help="output PNG path")
     parser.add_argument("--seed", type=int, default=1)
     parser.add_argument("--size", type=int, default=64)
+    parser.add_argument("--style", help="style crop PNG (RENDERER=onedm; default: fixture crop)")
     args = parser.parse_args()
 
+    from hwai.errors import ApiError
+    from hwai.render import get_renderer
+    from hwai.render.fixture_style import fixture_style_ref
     from hwai.text.splitter import EnglishSplitter
 
-    renderer = FakeRenderer()
-    words = [
-        (u, renderer.render_word(u, [], args.seed * 1000 + i, args.size))
-        for i, u in enumerate(EnglishSplitter().units(args.demo))
-        if u.strip()
-    ]
+    renderer = get_renderer()  # honours RENDERER=fake|onedm
+    style_refs: list[StyleRef] = []
+    if not isinstance(renderer, FakeRenderer):
+        style_refs = [
+            StyleRef(text="", image=Image.open(args.style)) if args.style else fixture_style_ref()
+        ]
+    units = [u for u in EnglishSplitter().units(args.demo) if u.strip()]
+    try:
+        words = [
+            (u, renderer.render_word(u, style_refs, args.seed * 1000 + i, args.size))
+            for i, u in enumerate(units)
+        ]
+    except ApiError as exc:
+        raise SystemExit(f"error [{exc.code}]: {exc.message}") from exc
     gap = args.size // 4
     base = max((w.baseline_px for _, w in words), default=0)
     below = max((w.image.height - w.baseline_px for _, w in words), default=0)
