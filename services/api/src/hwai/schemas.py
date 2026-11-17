@@ -31,6 +31,9 @@ class HandDocumentOut(BaseModel):
 class HandOut(BaseModel):
     id: str | None
     status: str
+    status_reason: str | None = None
+    status_message: str | None = None
+    sample_count: int = 0
     own_hand_confirmed_at: datetime | None
     documents: list[HandDocumentOut]
 

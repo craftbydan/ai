@@ -15,6 +15,7 @@ class Settings(BaseSettings):
     data_dir: Path = Path("./data")
     renderer: str = "fake"  # fake | onedm
     ocr: str = "fake"  # fake | trocr
+    fake_ocr_truth_path: Path | None = None  # FakeOcr ground truth (tests only)
     secret_key: str = ""
 
     anthropic_api_key: str = ""

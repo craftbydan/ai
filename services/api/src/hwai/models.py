@@ -42,6 +42,7 @@ class Hand(Base):
     own_hand_confirmed_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), default=None
     )
+    status_reason: Mapped[str | None] = mapped_column(String(64), default=None)
     created_at: Mapped[datetime] = _created()
 
 

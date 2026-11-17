@@ -26,11 +26,16 @@ def make_engine() -> Engine:
 _engines: dict[str, Engine] = {}
 
 
-def get_db() -> Iterator[Session]:
-    """FastAPI dependency: one session per request, engine cached per database URL."""
+def new_session() -> Session:
+    """A new session on the cached engine for the current DATA_DIR (caller closes it)."""
     url = database_url()
     engine = _engines.get(url)
     if engine is None:
         engine = _engines[url] = make_engine()
-    with sessionmaker(engine, expire_on_commit=False)() as session:
+    return sessionmaker(engine, expire_on_commit=False)()
+
+
+def get_db() -> Iterator[Session]:
+    """FastAPI dependency: one session per request."""
+    with new_session() as session:
         yield session

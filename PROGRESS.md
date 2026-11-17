@@ -7,7 +7,7 @@
 | 2 | Data model, accounts-lite, uploads | done | 7104cea | |
 | 3 | Renderer interface, fake, jitter, export | done | f230798 | |
 | 4 | One-DM renderer and cost measurement | blocked (GPU) | ffb33f3 | CPU-side code and tests pass independent check; GPU criteria unverified |
-| 5 | Learn the hand | pending | | |
+| 5 | Learn the hand | done (uncommitted) | | OCR=trocr run skipped (no torch/network) |
 | 6 | Read the target page | pending | | |
 | 7 | Layout engine | pending | | |
 | 8 | Chat agent | pending | | |
@@ -25,12 +25,15 @@ Prompt 3 adds: render/base.py (StyleRef, WordImage, Renderer), render/fake.py (+
 
 Prompt 4 adds: render/onedm.py (OneDMRenderer, render_words, converters), make install-ml, scripts/measure_cost.py, pinned One-DM commit dde2205a.
 
+Prompt 5 adds: hand/ocr.py (OcrEngine, FakeOcr, TrocrOcr, get_ocr), hand/segment.py (BBox, find_lines, split_words, deskew_page), hand/ingest.py (background job), hand/profile.py (rebuild_profile, style_refs_for(hand_id, k, seed, db=None)), migration 0003 (hands.status_reason), GET /hand now has status_reason, status_message, sample_count; db.new_session().
+
 ## Waiting on you
 - Prompt 4: NVIDIA GPU machine, ONEDM_WEIGHTS_PATH, GPU_COST_THB_PER_HOUR
 - Prompt 8: ANTHROPIC_API_KEY (live runs only)
 - Prompt 11: SECRET_KEY, STRIPE_SECRET_KEY (sk_test_), STRIPE_WEBHOOK_SECRET
 
 ## Deviations
+- P5: deskew is a separate deskew_page() called by ingest (boxes must be in the deskewed frame); split_words takes optional n_words (cut at widest gaps) used when OCR word count differs from threshold split; FakeOcr serves hand_page_1.json lines in order per page (override path with FAKE_OCR_TRUTH_PATH); profile prunes unselected samples (max 150, 4 per word); added hands.status_reason; test_uploads file counter now ignores crops/.
 - P4 GPU risks (checker review, untested): data/unifont.pickle must be fetched from One-DM dataset into vendor/One-DM/data/; Laplace recipe is a guess; ml extras unpinned vs One-DM's py3.8/torch1.13.1/diffusers0.18.2; unet.eval() should be called before each sample; sampling is not behind a lock; one style ref per call.
 - P3: StyleRef is a frozen dataclass (text, image); export_png overlay layers are (RGBA image, (x,y)) tuples; export.py imports FONT_PATH from render/fake.py.
 - P2: added ENV setting and error codes own_hand_not_confirmed, file_too_large, too_many_pages; POST /chats creates an empty hand if none.

@@ -1,14 +1,16 @@
 from datetime import UTC, datetime
 from typing import Annotated
 
-from fastapi import APIRouter, File, Form, UploadFile
-from sqlalchemy import select
+from fastapi import APIRouter, BackgroundTasks, File, Form, UploadFile
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from hwai import storage
 from hwai.deps import DbDep, UserDep
 from hwai.errors import ApiError
-from hwai.models import Hand, HandDocument, User
+from hwai.hand.ingest import ingest_document
+from hwai.hand.profile import REASONS
+from hwai.models import Hand, HandDocument, User, WordSample
 from hwai.pdfio import inspect_file
 from hwai.routes.uploads import read_upload
 from hwai.schemas import HandDocumentOut, HandOut
@@ -23,6 +25,9 @@ def get_user_hand(db: Session, user: User) -> Hand | None:
 def hand_out(db: Session, hand: Hand | None) -> HandOut:
     if hand is None:
         return HandOut(id=None, status="empty", own_hand_confirmed_at=None, documents=[])
+    count = db.scalar(
+        select(func.count()).select_from(WordSample).where(WordSample.hand_id == hand.id)
+    )
     docs = db.scalars(
         select(HandDocument)
         .where(HandDocument.hand_id == hand.id)
@@ -31,6 +36,9 @@ def hand_out(db: Session, hand: Hand | None) -> HandOut:
     return HandOut(
         id=hand.id,
         status=hand.status,
+        status_reason=hand.status_reason,
+        status_message=REASONS.get(hand.status_reason or "", hand.status_reason),
+        sample_count=count or 0,
         own_hand_confirmed_at=hand.own_hand_confirmed_at,
         documents=[HandDocumentOut.model_validate(d, from_attributes=True) for d in docs],
     )
@@ -44,6 +52,7 @@ def read_hand(db: DbDep, user: UserDep) -> HandOut:
 @router.post("/hand/documents", response_model=HandDocumentOut, status_code=201)
 def upload_hand_document(
     file: Annotated[UploadFile, File()],
+    background: BackgroundTasks,
     db: DbDep,
     user: UserDep,
     own_hand_confirmed: Annotated[bool, Form()] = False,
@@ -63,6 +72,8 @@ def upload_hand_document(
     if hand.own_hand_confirmed_at is None:
         hand.own_hand_confirmed_at = datetime.now(UTC)
     rel = storage.save_file(user.id, "hand", data, info.ext)
+    hand.status = "learning"
+    hand.status_reason = None
     db.flush()
     doc = HandDocument(hand_id=hand.id, file_path=rel, page_count=info.page_count)
     db.add(doc)
@@ -72,4 +83,5 @@ def upload_hand_document(
         db.rollback()
         storage.delete_file(rel)
         raise
+    background.add_task(ingest_document, doc.id)
     return HandDocumentOut.model_validate(doc, from_attributes=True)

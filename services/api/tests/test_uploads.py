@@ -15,7 +15,11 @@ from .conftest import FIXTURES
 
 
 def _files(data_dir: Path) -> list[Path]:
-    return [p for p in data_dir.rglob("*") if p.is_file() and p.suffix != ".sqlite"]
+    return [
+        p
+        for p in data_dir.rglob("*")
+        if p.is_file() and p.suffix != ".sqlite" and p.parent.name != "crops"
+    ]
 
 
 def _upload(client: TestClient, name: str, confirmed: str = "true"):  # type: ignore[no-untyped-def]

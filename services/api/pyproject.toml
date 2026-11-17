@@ -65,6 +65,6 @@ plugins = []
 [[tool.mypy.overrides]]
 module = [
   "cv2.*", "pypdfium2.*", "pikepdf.*", "reportlab.*",
-  "torch.*", "diffusers.*", "data_loader.*", "models.*", "parse_config.*",
+  "torch.*", "transformers.*", "diffusers.*", "data_loader.*", "models.*", "parse_config.*",
 ]
 ignore_missing_imports = true
