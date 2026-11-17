@@ -1,8 +1,9 @@
 import io
 import json
 
+import pytest
 from fastapi.testclient import TestClient
-from PIL import Image
+from PIL import Image, ImageDraw
 from sqlalchemy.orm import Session
 
 from hwai.auth import current_user
@@ -121,3 +122,52 @@ def test_analysis_and_page_endpoints_with_ownership(client: TestClient) -> None:
     other = _other_client()
     assert other.get(f"/chats/{chat_id}/files/{fid}/analysis").status_code == 404
     assert other.get(f"/chats/{chat_id}/files/{fid}/pages/1.png").status_code == 404
+
+
+def _notebook(
+    spacing: int,
+    rule: tuple[int, int, int],
+    margin: tuple[int, int, int] | None,
+    margin_x: int = 160,
+    side_inset: int = 0,
+) -> tuple[Image.Image, int]:
+    """Synthetic lined page: rules every `spacing` px plus an optional vertical margin."""
+    w, h, top = 1240, 1754, 150
+    img = Image.new("RGB", (w, h), "white")
+    d = ImageDraw.Draw(img)
+    ys = list(range(top, h - 100, spacing))
+    for y in ys:
+        d.line([(side_inset, y), (w - side_inset, y)], fill=rule, width=2)
+    if margin is not None:
+        d.line([(margin_x, 0), (margin_x, h)], fill=margin, width=2)
+    return img, len(ys)
+
+
+@pytest.mark.parametrize(
+    ("spacing", "rule", "margin", "margin_x", "inset"),
+    [
+        (52, (0, 0, 0), (220, 40, 40), 160, 0),
+        (90, (200, 30, 30), (220, 40, 40), 160, 0),
+        (90, (30, 60, 200), (30, 60, 200), 120, 50),
+        (52, (0, 0, 0), (0, 0, 0), 200, 0),
+        (52, (30, 60, 200), None, 160, 0),
+    ],
+)
+def test_margin_line_does_not_suppress_ruled_lines(
+    spacing: int,
+    rule: tuple[int, int, int],
+    margin: tuple[int, int, int] | None,
+    margin_x: int,
+    inset: int,
+) -> None:
+    img, expected = _notebook(spacing, rule, margin, margin_x, inset)
+    a = analyze_page(img)
+    lines = _kinds(a, "line")
+    assert len(lines) >= 0.8 * expected
+    assert not _kinds(a, "box")
+    ids = [r.id for r in a.regions]
+    assert len(ids) == len(set(ids))
+    for r in a.regions:
+        x0, y0, x1, y1 = r.bbox_px
+        assert 0 <= x0 < x1 <= a.width and 0 <= y0 < y1 <= a.height
+    assert analyze_page(img).model_dump_json() == a.model_dump_json()

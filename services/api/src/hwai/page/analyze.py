@@ -84,6 +84,13 @@ def _on_edge(seg: tuple[int, int, int], rect: tuple[int, int, int, int], tol: in
     return x0 >= rx0 - tol and x1 <= rx1 + tol and (abs(y - ry0) <= tol or abs(y - ry1) <= tol)
 
 
+def _vertical_rules(mask: np.ndarray) -> np.ndarray:
+    """Long vertical strokes (margin rules, box walls), slightly thickened. Structure, not text."""
+    v = _strokes(mask, False, max(MIN_REGION_PX, int(0.06 * mask.shape[0])))
+    out: np.ndarray = cv2.dilate(v, np.ones((1, 5), np.uint8), iterations=1)
+    return out
+
+
 def _find_line_segments(mask: np.ndarray) -> list[tuple[int, int, int]]:
     """Long thin horizontal strokes as (x0, x1, y), fragments of one line merged."""
     h, w = mask.shape
@@ -92,6 +99,10 @@ def _find_line_segments(mask: np.ndarray) -> list[tuple[int, int, int]]:
         mask, cv2.MORPH_CLOSE, cv2.getStructuringElement(cv2.MORPH_RECT, (gap, 1))
     )
     long_strokes = _strokes(closed, True, max(MIN_REGION_PX, int(0.06 * w)))
+    # A long vertical stroke (notebook margin, box wall) touches every rule it crosses and would
+    # fuse them into one tall component; cut it out so each rule is judged on its own. The
+    # pieces on either side are merged back below, so a line may span the margin.
+    long_strokes = long_strokes & (1 - _vertical_rules(mask))
     max_thick = max(8, int(0.005 * max(w, h)))
     n, _, stats, _ = cv2.connectedComponentsWithStats(long_strokes, connectivity=8)
     segs: list[tuple[int, int, int]] = []
@@ -205,7 +216,7 @@ def analyze_page(img: Image.Image | np.ndarray, page: int = 1) -> PageAnalysis:
     line_px = np.zeros_like(mask)
     for x0, x1, y in _find_line_segments(mask):
         line_px[max(0, y - 6) : y + 7, x0:x1] = 1
-    content = mask.astype(bool) & ~line_px.astype(bool)
+    content = mask.astype(bool) & ~line_px.astype(bool) & ~_vertical_rules(mask).astype(bool)
 
     raw = _line_regions(segs, content)
     raw += [Region(id="", page=1, kind="box", bbox_px=b) for b in boxes]
