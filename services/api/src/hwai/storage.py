@@ -43,3 +43,10 @@ def absolute_path(rel_path: str) -> Path:
 
 def delete_file(rel_path: str) -> None:
     _resolve(rel_path).unlink(missing_ok=True)
+
+
+def write_file(rel_path: str, data: bytes) -> None:
+    """Write bytes at a path (relative to DATA_DIR) that the caller chose."""
+    path = _resolve(rel_path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_bytes(data)

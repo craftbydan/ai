@@ -9,7 +9,7 @@
 | 4 | One-DM renderer and cost measurement | blocked (GPU) | ffb33f3 | CPU-side code and tests pass independent check; GPU criteria unverified |
 | 5 | Learn the hand | done | 65191c2 | OCR=trocr run skipped (no torch) |
 | 6 | Read the target page | done | 05ba5f3 | margin-line bug found by checker, fixed + tested |
-| 7 | Layout engine | pending | | |
+| 7 | Layout engine | done | | |
 | 8 | Chat agent | pending | | |
 | 9 | Safety rules | pending | | |
 | 10 | Web app | pending | | |
@@ -29,12 +29,15 @@ Prompt 5 adds: hand/ocr.py (OcrEngine, FakeOcr, TrocrOcr, get_ocr), hand/segment
 
 Prompt 6 adds: page/analyze.py (analyze_page, draw_regions, CLI), page/regions.py (Region), analysis_json on chat files, GET /chats/{id}/files/{fid}/analysis and /pages/{n}.png.
 
+Prompt 7 adds: layout/place.py (layout_text, compose, PlacedText), Placement/RenderRequest/FitReport/RenderOut schemas, routes/renders.py (POST /chats/{id}/render, GET .../renders/{v}/preview.png[?page=N]), routes/exports.py (POST /chats/{id}/export?version&format[&page]), storage.write_file, pdfio.pdf_page_size_points, export.image_size_points, 422 messages now name the bad field.
+
 ## Waiting on you
 - Prompt 4: NVIDIA GPU machine, ONEDM_WEIGHTS_PATH, GPU_COST_THB_PER_HOUR
 - Prompt 8: ANTHROPIC_API_KEY (live runs only)
 - Prompt 11: SECRET_KEY, STRIPE_SECRET_KEY (sk_test_), STRIPE_WEBHOOK_SECRET
 
 ## Deviations
+- P7: render uses the chat's latest uploaded file; composed pages are stored (page 1 = preview_path, others `-pN.png`) and export reads them, so exports match previews even if the hand changes; PDF export uses the original PDF's point size (images: 150 DPI conversion in export.py); render works regardless of hand status (agent will gate later); words rendered once at full size then shrunk by resize.
 - P5: deskew is a separate deskew_page() called by ingest (boxes must be in the deskewed frame); split_words takes optional n_words (cut at widest gaps) used when OCR word count differs from threshold split; FakeOcr serves hand_page_1.json lines in order per page (override path with FAKE_OCR_TRUTH_PATH); profile prunes unselected samples (max 150, 4 per word); added hands.status_reason; test_uploads file counter now ignores crops/.
 - P4 GPU risks (checker review, untested): data/unifont.pickle must be fetched from One-DM dataset into vendor/One-DM/data/; Laplace recipe is a guess; ml extras unpinned vs One-DM's py3.8/torch1.13.1/diffusers0.18.2; unet.eval() should be called before each sample; sampling is not behind a lock; one style ref per call.
 - P3: StyleRef is a frozen dataclass (text, image); export_png overlay layers are (RGBA image, (x,y)) tuples; export.py imports FONT_PATH from render/fake.py.

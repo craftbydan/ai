@@ -25,6 +25,11 @@ def px_to_pt(px: float) -> float:
     return px * POINTS_PER_PIXEL
 
 
+def image_size_points(page: Image.Image) -> tuple[float, float]:
+    """Page size in PDF points for a 150-DPI page image."""
+    return px_to_pt(page.width), px_to_pt(page.height)
+
+
 def _mark(page: Image.Image) -> Image.Image:
     """Return an RGB copy with the visible footer mark drawn bottom-right."""
     out = page.convert("RGB")

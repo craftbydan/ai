@@ -1,9 +1,9 @@
 """Pydantic API schemas."""
 
 from datetime import datetime
-from typing import Any
+from typing import Any, Literal
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class HealthResponse(BaseModel):
@@ -64,3 +64,38 @@ class ChatOut(BaseModel):
 class ChatDetail(ChatOut):
     files: list[ChatFileOut]
     messages: list[MessageOut]
+
+
+class Placement(BaseModel):
+    """What to write where. Placements come from the request body (later, from the agent)."""
+
+    region_id: str = Field(min_length=1, max_length=64)
+    text: str = Field(max_length=2000)
+    align: Literal["left", "center", "right"] = "left"
+    size_scale: float = Field(default=1.0, ge=0.5, le=1.5)
+    slant_deg: float = Field(default=0.0, ge=-15, le=15)
+    jitter: float = Field(default=0.5, ge=0, le=1)
+    seed: int = 0
+
+
+class RenderRequest(BaseModel):
+    placements: list[Placement] = Field(max_length=100)
+
+
+class FitItem(BaseModel):
+    region_id: str
+    fit: bool
+    cut_words: int
+    size_px: int
+    shrink: float
+
+
+class FitReport(BaseModel):
+    all_fit: bool
+    placements: list[FitItem]
+
+
+class RenderOut(BaseModel):
+    version: int
+    preview_url: str
+    fit_report: FitReport

@@ -74,3 +74,16 @@ def page_images(path: str | Path, dpi: int = 150) -> list[Image.Image]:
         return [pdf[i].render(scale=scale).to_pil().convert("RGB") for i in range(len(pdf))]
     finally:
         pdf.close()
+
+
+def pdf_page_size_points(path: str | Path) -> tuple[float, float] | None:
+    """Size of the first page of a PDF in points, as stored in the file; None for images."""
+    data = Path(path).read_bytes()
+    if not data.startswith(b"%PDF-"):
+        return None
+    pdf = pdfium.PdfDocument(data)
+    try:
+        width, height = pdf[0].get_size()
+        return float(width), float(height)
+    finally:
+        pdf.close()

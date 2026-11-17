@@ -8,7 +8,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from hwai.config import get_settings
 from hwai.errors import ApiError
-from hwai.routes import chats, hand, health
+from hwai.routes import chats, exports, hand, health, renders
 
 
 def error_response(status: int, code: str, message: str) -> JSONResponse:
@@ -36,7 +36,10 @@ def create_app() -> FastAPI:
 
     @app.exception_handler(RequestValidationError)
     async def validation_error(_: Request, exc: RequestValidationError) -> JSONResponse:
-        return error_response(422, "validation_error", "The request was not valid.")
+        first = exc.errors()[0] if exc.errors() else {}
+        where = ".".join(str(p) for p in first.get("loc", ()) if p != "body")
+        detail = f" ({where}: {first['msg']})" if first.get("msg") else ""
+        return error_response(422, "validation_error", f"The request was not valid{detail}.")
 
     @app.exception_handler(Exception)
     async def unhandled_error(_: Request, exc: Exception) -> JSONResponse:
@@ -45,6 +48,8 @@ def create_app() -> FastAPI:
     app.include_router(health.router)
     app.include_router(hand.router)
     app.include_router(chats.router)
+    app.include_router(renders.router)
+    app.include_router(exports.router)
     return app
 
 
