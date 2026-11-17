@@ -11,7 +11,7 @@
 | 6 | Read the target page | done | 05ba5f3 | margin-line bug found by checker, fixed + tested |
 | 7 | Layout engine | done | 25e6041 | |
 | 8 | Chat agent | done | e9eb6e2 | live check skipped (no ANTHROPIC_API_KEY); model id claude-haiku-5-5 unconfirmed; est. cost uses placeholder USD prices |
-| 9 | Safety rules | done (uncommitted) | | live classification skipped (no ANTHROPIC_API_KEY); only the local fallback and scripted-client paths tested |
+| 9 | Safety rules | done | 8d84cb1 | live LLM classification skipped (no key); local fallback used without key |
 | 10 | Web app | pending | | |
 | 11 | Accounts and billing (test mode) | pending | | needs Stripe test keys |
 | 12 | Testing and hardening | pending | | |
@@ -35,12 +35,15 @@ Prompt 7-8 add: layout/place.py, POST /chats/{id}/render, GET .../renders/{v}/pr
 
 Prompt 9 adds: safety/ (rules, classify, signature), hwai/llm.py (get_llm_client moved, re-exported from agent.loop), CLASSIFIER env, Region.signature, 422 document_refused, 403 file_refused / signature_blocked, own_hand_statement on hand responses, tests/test_safety.py.
 
+Prompt 9 adds: safety/ (rules, classify, signature), CLASSIFIER=real|mock:<kind>, 422 document_refused, 403 file_refused / signature_blocked, own_hand statement on /hand, hwai/llm.py.
+
 ## Waiting on you
 - Prompt 4: NVIDIA GPU machine, ONEDM_WEIGHTS_PATH, GPU_COST_THB_PER_HOUR
 - Prompt 8: ANTHROPIC_API_KEY (live runs only)
 - Prompt 11: SECRET_KEY, STRIPE_SECRET_KEY (sk_test_), STRIPE_WEBHOOK_SECRET
 
 ## Deviations
+- P9 known risks (checker): signature heuristic is pixel-only (misses uncaptioned/full-width lines, may flag 'Date' blanks); no-key fallback refuses pages >250 small glyphs or >6% ink as legal:fallback (may wrongly refuse dense letters); only first 3 pages sent to the classifier; regex signature-text check may refuse innocent 'email signature'. Real behaviour needs a live-key check.
 - P7: render uses the chat's latest uploaded file; composed pages are stored (page 1 = preview_path, others `-pN.png`) and export reads them, so exports match previews even if the hand changes; PDF export uses the original PDF's point size (images: 150 DPI conversion in export.py); render works regardless of hand status (agent will gate later); words rendered once at full size then shrunk by resize.
 - P5: deskew is a separate deskew_page() called by ingest (boxes must be in the deskewed frame); split_words takes optional n_words (cut at widest gaps) used when OCR word count differs from threshold split; FakeOcr serves hand_page_1.json lines in order per page (override path with FAKE_OCR_TRUTH_PATH); profile prunes unselected samples (max 150, 4 per word); added hands.status_reason; test_uploads file counter now ignores crops/.
 - P4 GPU risks (checker review, untested): data/unifont.pickle must be fetched from One-DM dataset into vendor/One-DM/data/; Laplace recipe is a guess; ml extras unpinned vs One-DM's py3.8/torch1.13.1/diffusers0.18.2; unet.eval() should be called before each sample; sampling is not behind a lock; one style ref per call.
