@@ -4,7 +4,7 @@ WEB_DIR := apps/web
 VENV := $(abspath $(API_DIR)/.venv)
 PY := $(VENV)/bin/python
 
-.PHONY: install install-ml dev build typecheck lint test e2e migrate
+.PHONY: install install-ml dev build typecheck lint test e2e migrate audit
 
 install:
 	cd $(WEB_DIR) && npm install
@@ -18,7 +18,7 @@ install-ml:
 	cd vendor/One-DM && git checkout $(ONEDM_COMMIT)
 	cd $(API_DIR) && $(VENV)/bin/pip install -e ".[dev,ml]"
 
-dev:
+dev: migrate
 	@trap 'kill 0' INT TERM EXIT; \
 	(cd $(API_DIR) && $(VENV)/bin/uvicorn hwai.main:app --app-dir src --reload --port 8000) & \
 	(cd $(WEB_DIR) && npm run dev) & \
@@ -37,7 +37,8 @@ lint:
 	cd $(API_DIR) && $(VENV)/bin/ruff check . && $(VENV)/bin/ruff format --check .
 
 test:
-	cd $(API_DIR) && $(VENV)/bin/pytest
+	cd $(API_DIR) && $(VENV)/bin/pytest --cov=hwai --cov-report=json:coverage.json --cov-report=term:skip-covered
+	$(PY) scripts/check_coverage.py $(API_DIR)/coverage.json --floor 80
 	cd $(WEB_DIR) && npm test
 
 e2e:
@@ -45,3 +46,7 @@ e2e:
 
 migrate:
 	cd $(API_DIR) && $(VENV)/bin/alembic upgrade head
+
+audit:
+	cd $(API_DIR) && $(VENV)/bin/pip-audit --skip-editable
+	cd $(WEB_DIR) && npm audit --omit=dev

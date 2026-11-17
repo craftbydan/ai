@@ -2,14 +2,14 @@ import io
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, File, Header, Response, UploadFile
-from sqlalchemy import func, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session
 
 from hwai import storage
 from hwai.deps import DbDep, UserDep
 from hwai.errors import ApiError
 from hwai.llm import get_llm_client
-from hwai.models import Chat, ChatFile, Hand, Message, Render, User
+from hwai.models import Chat, ChatFile, Export, Hand, Message, Payment, Render, User
 from hwai.page.analyze import analyze_pages, load_pages
 from hwai.page.regions import Region
 from hwai.pdfio import inspect_file
@@ -148,3 +148,35 @@ def read_file_page(chat_id: str, file_id: str, n: int, db: DbDep, user: UserDep)
     buf = io.BytesIO()
     page.save(buf, format="PNG")
     return Response(content=buf.getvalue(), media_type="image/png")
+
+
+@router.delete("/chats/{chat_id}", status_code=204)
+def delete_chat(chat_id: str, db: DbDep, user: UserDep) -> Response:
+    """Delete a chat with its files, renders (all page previews), exports and rows."""
+    chat = get_owned_chat(db, user, chat_id)
+    paths = [f.file_path for f in db.scalars(select(ChatFile).where(ChatFile.chat_id == chat.id))]
+    renders = list(db.scalars(select(Render).where(Render.chat_id == chat.id)))
+    render_ids = [r.id for r in renders]
+    for r in renders:
+        if r.preview_path:
+            paths.append(r.preview_path)
+            # Extra pages of a multi-page render live next to page 1 as `<name>-pN.png`.
+            stem = storage.absolute_path(r.preview_path)
+            paths += [
+                str(p.relative_to(storage.absolute_path("")))
+                for p in stem.parent.glob(f"{stem.stem}-p*.png")
+            ]
+    if render_ids:
+        paths += [
+            e.file_path for e in db.scalars(select(Export).where(Export.render_id.in_(render_ids)))
+        ]
+        db.execute(delete(Export).where(Export.render_id.in_(render_ids)))
+    db.execute(delete(Render).where(Render.chat_id == chat.id))
+    db.execute(delete(ChatFile).where(ChatFile.chat_id == chat.id))
+    db.execute(delete(Message).where(Message.chat_id == chat.id))
+    db.execute(delete(Payment).where(Payment.chat_id == chat.id))
+    db.delete(chat)
+    db.commit()
+    for rel in paths:  # files go after the rows commit: a failed delete never leaves dangling rows
+        storage.delete_file(rel)
+    return Response(status_code=204)

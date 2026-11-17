@@ -4,6 +4,7 @@ The client filename is never used; the extension comes from content sniffing.
 All paths are stored relative to DATA_DIR and checked to stay inside it.
 """
 
+import shutil
 import uuid
 from pathlib import Path
 
@@ -50,3 +51,11 @@ def write_file(rel_path: str, data: bytes) -> None:
     path = _resolve(rel_path)
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_bytes(data)
+
+
+def delete_tree(rel_dir: str) -> None:
+    """Remove a directory (relative to DATA_DIR) and everything under it, if it exists."""
+    path = _resolve(rel_dir)
+    if path == _root():
+        raise ValueError("refusing to delete DATA_DIR itself")
+    shutil.rmtree(path, ignore_errors=True)

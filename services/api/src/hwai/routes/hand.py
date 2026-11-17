@@ -1,8 +1,8 @@
 from datetime import UTC, datetime
 from typing import Annotated
 
-from fastapi import APIRouter, BackgroundTasks, File, Form, UploadFile
-from sqlalchemy import func, select
+from fastapi import APIRouter, BackgroundTasks, File, Form, Response, UploadFile
+from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session
 
 from hwai import storage
@@ -87,3 +87,20 @@ def upload_hand_document(
     return HandDocumentOut.model_validate(doc, from_attributes=True).model_copy(
         update={"own_hand_confirmed_at": hand.own_hand_confirmed_at}
     )
+
+
+@router.delete("/hand", status_code=204)
+def delete_hand(db: DbDep, user: UserDep) -> Response:
+    """Remove every sample, crop and document of the user's hand; the hand row is reset."""
+    hand = get_user_hand(db, user)
+    if hand is not None:
+        db.execute(delete(WordSample).where(WordSample.hand_id == hand.id))
+        db.execute(delete(HandDocument).where(HandDocument.hand_id == hand.id))
+        hand.status = "empty"
+        hand.status_reason = None
+        hand.own_hand_confirmed_at = None
+        db.commit()
+    # Hand uploads and crops live only under these two folders of the user's data.
+    storage.delete_tree(f"{user.id}/hand")
+    storage.delete_tree(f"{user.id}/crops")
+    return Response(status_code=204)

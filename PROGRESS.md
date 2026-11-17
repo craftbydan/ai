@@ -14,7 +14,7 @@
 | 9 | Safety rules | done | 8d84cb1 | live LLM classification skipped (no key); local fallback used without key |
 | 10 | Web app | done | e708058 | design skills pre-flight audit not run separately (rules followed by hand) |
 | 11 | Accounts and billing (test mode) | done (live Stripe flow BLOCKED) | bf1b003 | no Stripe keys/SECRET_KEY supplied; checkout creation mocked, webhook signature verified for real |
-| 12 | Testing and hardening | pending | | |
+| 12 | Testing and hardening | done | | audits clean; GPU/live-key/live-Stripe items still BLOCKED (see Waiting on you) |
 
 ## What exists now
 API: FastAPI app factory, GET /health, standard error shape, config, SQLite+Alembic (empty migration). Web: Next.js home page + src/lib/api.ts. Fixtures in services/api/tests/fixtures (Caveat font, hand_page_1.png/.json, card.pdf, planner.pdf, blank.png). Makefile targets all exist.
@@ -39,12 +39,18 @@ Prompt 9 adds: safety/ (rules, classify, signature), CLASSIFIER=real|mock:<kind>
 
 Prompt 11 adds: auth.py (cookie sessions, argon2, rate limiter, startup guard), routes/auth.py, billing.py + routes/billing.py (checkout, webhook), routes/admin.py (GET /admin/cost, dev only), payments table (migration 0004), DEV_USER / BILLING / PRICING_MODE / PRICE_THB_PER_PAGE settings, web /login /signup, account nav, AuthGate redirect, 402 -> checkout in the chat page, credentials: include, e2e auth.spec.ts (two-phase e2e.sh), tests/test_accounts_billing.py.
 
+Prompt 12 adds: `make audit` (pip-audit --skip-editable + npm audit --omit=dev), pdfio MAX_IMAGE_PIXELS=50M set explicitly (+ PDF page-size guard, 400 `image_too_large`), blank-message validation (422), DELETE /chats/{id} and DELETE /hand (storage.delete_tree), tests/test_hardening.py, test_delete_concurrency.py, test_coverage_extra.py, e2e/a11y.spec.ts (axe, light+dark, 5 pages), scripts/check_coverage.py + coverage gate in `make test` (80% on hand/, page/, layout/, safety/, export.py), README.md, `make dev` now runs migrations first, dev deps pytest-cov and pip-audit, @axe-core/playwright.
+
+## Final status (Prompt 12)
+`make lint typecheck test e2e build audit` all green from this checkout (178 pytest passed + 1 gpu-skipped, 15 vitest, 18 Playwright incl. axe, `next build`, pip-audit and npm audit 0 vulnerabilities). Coverage: hand 85.1%, page 92.3%, layout 98.2%, safety 94.9%, export.py 93.0% (floor 80%). Real bug fixed: one extremely long word (every word wider than the region) crashed `layout_text` with ValueError (500); it now reports fit=false and cut_words. Still BLOCKED (need external things, not code): One-DM GPU verification and `measure_cost.py` (GPU, weights), live Anthropic run (key; model id unconfirmed), live Stripe test flow (keys), TrOCR run (no torch). The public One-DM weights remain NOT cleared for paid use (Launch gate).
+
 ## Waiting on you
 - Prompt 4: NVIDIA GPU machine, ONEDM_WEIGHTS_PATH, GPU_COST_THB_PER_HOUR
 - Prompt 8: ANTHROPIC_API_KEY (live runs only)
 - Prompt 11 (live Stripe check only): SECRET_KEY (needed outside dev), STRIPE_SECRET_KEY (sk_test_), STRIPE_WEBHOOK_SECRET, PromptPay enabled in the Stripe test dashboard
 
 ## Deviations
+- P12: audits ran online and found 0 vulnerabilities (pip-audit skips the editable `hwai` package itself; torch/transformers ML extras are not installed so are not audited). Web UI has no delete buttons (API only; UI skipped as not trivial). DELETE /chats also deletes that chat's `payments` rows (FK); DELETE /hand also clears own_hand_confirmed_at (a new upload must re-confirm) and does not touch chats; deleting while ingestion is running is not synchronised. Coverage floor is per area (aggregate of statements per package/file), not per file: hand/ocr.py (TrocrOcr, needs torch) is 63% and render/onedm.py is outside the gated areas. Image limit: >50 megapixels (or a PDF page that would render above that at 150 DPI) is 400 `image_too_large`; Pillow's own MAX_IMAGE_PIXELS is set to the same value. Emoji/CJK/Thai/RTL text goes through /render and /messages without a 500 (how unsupported glyphs look was not inspected). Playwright a11y specs run in the dev phase of `make e2e` only.
 - P11: payments table has extra render_version column; login rate limit in-memory per process; cookie auth assumes web+API same site; web 402->checkout redirect only unit-tested.
 - P10 minor visual issues (checker): ruled-line bg runs through body text in /chats and empty-chat empty states; sparse right column on home at 1440; preview frame capped at 72vh; low-contrast disabled Send button. Added GET /chats, latest_render_version, safety_message, X-Test-Classifier header, AGENT=mock.
 - P9 known risks (checker): signature heuristic is pixel-only (misses uncaptioned/full-width lines, may flag 'Date' blanks); no-key fallback refuses pages >250 small glyphs or >6% ink as legal:fallback (may wrongly refuse dense letters); only first 3 pages sent to the classifier; regex signature-text check may refuse innocent 'email signature'. Real behaviour needs a live-key check.

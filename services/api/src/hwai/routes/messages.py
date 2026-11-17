@@ -3,7 +3,7 @@
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from hwai.agent.loop import run_agent
 from hwai.deps import DbDep, UserDep
@@ -18,6 +18,13 @@ router = APIRouter()
 
 class MessageIn(BaseModel):
     text: str = Field(min_length=1, max_length=2000)
+
+    @field_validator("text")
+    @classmethod
+    def _not_blank(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError("message must not be empty")
+        return value
 
 
 class MessageReply(BaseModel):

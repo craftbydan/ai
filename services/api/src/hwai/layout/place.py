@@ -257,6 +257,11 @@ def layout_text(
             placed.append((x, by + wob, un))
             x += un.image.width + (gaps[k] if k < len(gaps) else 0)
 
+    if not placed:  # every word was wider than the region (e.g. one extremely long word)
+        return PlacedText(
+            [], region.id, region.page, box, False, n_units, size, chosen_shrink, n_units
+        )
+
     if region.kind == "line" and region.baseline_px is not None:
         shift = region.baseline_px
     else:

@@ -12,6 +12,11 @@ from hwai.errors import ApiError
 MAX_BYTES = 20 * 1024 * 1024
 MAX_PAGES = 30
 PDF_POINTS_PER_INCH = 72
+# Decompression-bomb guard: set explicitly (Pillow's default is ~89 MP and only warns at 1x).
+# ~50 MP covers a 600 DPI A4 scan (35 MP); anything bigger is rejected with a 400 before decoding.
+MAX_IMAGE_PIXELS = 50_000_000
+Image.MAX_IMAGE_PIXELS = MAX_IMAGE_PIXELS
+RENDER_DPI = 150
 
 
 @dataclass(frozen=True)
@@ -36,6 +41,12 @@ def sniff(data: bytes) -> tuple[str, str]:
     raise _unsupported()
 
 
+def _too_big() -> ApiError:
+    return ApiError(
+        400, "image_too_large", "That image has too many pixels. Please use a smaller image."
+    )
+
+
 def inspect_file(data: bytes) -> FileInfo:
     """Validate an upload (size, type, page count) and return what it is."""
     if len(data) > MAX_BYTES:
@@ -44,24 +55,37 @@ def inspect_file(data: bytes) -> FileInfo:
     if kind == "pdf":
         try:
             pdf = pdfium.PdfDocument(data)
-            count = len(pdf)
-            pdf.close()
         except pdfium.PdfiumError as exc:
             raise _unsupported() from exc
-        if count == 0:
-            raise _unsupported()
-        if count > MAX_PAGES:
-            raise ApiError(400, "too_many_pages", f"That file has more than {MAX_PAGES} pages.")
+        try:
+            count = len(pdf)
+            if count == 0:
+                raise _unsupported()
+            if count > MAX_PAGES:
+                raise ApiError(400, "too_many_pages", f"That file has more than {MAX_PAGES} pages.")
+            scale = RENDER_DPI / PDF_POINTS_PER_INCH
+            for i in range(count):
+                w, h = pdf[i].get_size()
+                if w * scale * h * scale > MAX_IMAGE_PIXELS:
+                    raise _too_big()
+        except pdfium.PdfiumError as exc:
+            raise _unsupported() from exc
+        finally:
+            pdf.close()
         return FileInfo(kind, ext, count)
     try:
         with Image.open(io.BytesIO(data)) as img:
+            if img.width * img.height > MAX_IMAGE_PIXELS:
+                raise _too_big()
             img.verify()
-    except (UnidentifiedImageError, OSError, SyntaxError) as exc:
+    except Image.DecompressionBombError as exc:
+        raise _too_big() from exc
+    except (UnidentifiedImageError, OSError, SyntaxError, ValueError) as exc:
         raise _unsupported() from exc
     return FileInfo(kind, ext, 1)
 
 
-def page_images(path: str | Path, dpi: int = 150) -> list[Image.Image]:
+def page_images(path: str | Path, dpi: int = RENDER_DPI) -> list[Image.Image]:
     """Render a PDF (one image per page) or load an image (one page) as RGB."""
     data = Path(path).read_bytes()
     info = inspect_file(data)

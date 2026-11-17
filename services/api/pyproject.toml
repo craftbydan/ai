@@ -28,7 +28,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-dev = ["pytest", "httpx", "ruff", "mypy"]
+dev = ["pytest", "pytest-cov", "pip-audit", "httpx", "ruff", "mypy"]
 ml = [
   "torch",
   "torchvision",
