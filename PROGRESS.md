@@ -13,7 +13,7 @@
 | 8 | Chat agent | done | e9eb6e2 | live check skipped (no ANTHROPIC_API_KEY); model id claude-haiku-5-5 unconfirmed; est. cost uses placeholder USD prices |
 | 9 | Safety rules | done | 8d84cb1 | live LLM classification skipped (no key); local fallback used without key |
 | 10 | Web app | done | e708058 | design skills pre-flight audit not run separately (rules followed by hand) |
-| 11 | Accounts and billing (test mode) | done (live Stripe flow BLOCKED) | | no Stripe keys/SECRET_KEY supplied; all Stripe calls mocked in tests |
+| 11 | Accounts and billing (test mode) | done (live Stripe flow BLOCKED) | bf1b003 | no Stripe keys/SECRET_KEY supplied; checkout creation mocked, webhook signature verified for real |
 | 12 | Testing and hardening | pending | | |
 
 ## What exists now
@@ -45,6 +45,7 @@ Prompt 11 adds: auth.py (cookie sessions, argon2, rate limiter, startup guard), 
 - Prompt 11 (live Stripe check only): SECRET_KEY (needed outside dev), STRIPE_SECRET_KEY (sk_test_), STRIPE_WEBHOOK_SECRET, PromptPay enabled in the Stripe test dashboard
 
 ## Deviations
+- P11: payments table has extra render_version column; login rate limit in-memory per process; cookie auth assumes web+API same site; web 402->checkout redirect only unit-tested.
 - P10 minor visual issues (checker): ruled-line bg runs through body text in /chats and empty-chat empty states; sparse right column on home at 1440; preview frame capped at 72vh; low-contrast disabled Send button. Added GET /chats, latest_render_version, safety_message, X-Test-Classifier header, AGENT=mock.
 - P9 known risks (checker): signature heuristic is pixel-only (misses uncaptioned/full-width lines, may flag 'Date' blanks); no-key fallback refuses pages >250 small glyphs or >6% ink as legal:fallback (may wrongly refuse dense letters); only first 3 pages sent to the classifier; regex signature-text check may refuse innocent 'email signature'. Real behaviour needs a live-key check.
 - P7: render uses the chat's latest uploaded file; composed pages are stored (page 1 = preview_path, others `-pN.png`) and export reads them, so exports match previews even if the hand changes; PDF export uses the original PDF's point size (images: 150 DPI conversion in export.py); render works regardless of hand status (agent will gate later); words rendered once at full size then shrunk by resize.
