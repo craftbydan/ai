@@ -1,18 +1,23 @@
 import io
 from typing import Annotated, Any
 
-from fastapi import APIRouter, File, Response, UploadFile
+from fastapi import APIRouter, Depends, File, Response, UploadFile
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from hwai import storage
 from hwai.deps import DbDep, UserDep
 from hwai.errors import ApiError
+from hwai.llm import get_llm_client
 from hwai.models import Chat, ChatFile, Hand, Message, User
 from hwai.page.analyze import analyze_pages, load_pages
+from hwai.page.regions import Region
 from hwai.pdfio import inspect_file
 from hwai.routes.hand import get_user_hand
 from hwai.routes.uploads import read_upload
+from hwai.safety.classify import classify_document
+from hwai.safety.rules import message_for
+from hwai.safety.signature import flag_signature_regions
 from hwai.schemas import ChatDetail, ChatFileOut, ChatOut, MessageOut
 
 router = APIRouter()
@@ -61,6 +66,7 @@ def upload_chat_file(
     file: Annotated[UploadFile, File()],
     db: DbDep,
     user: UserDep,
+    client: Annotated[Any, Depends(get_llm_client)],
 ) -> ChatFile:
     chat = get_owned_chat(db, user, chat_id)
     data = read_upload(file)
@@ -68,9 +74,27 @@ def upload_chat_file(
     rel = storage.save_file(user.id, "target", data, info.ext)
     chat_file = ChatFile(chat_id=chat.id, file_path=rel, kind=info.kind, page_count=info.page_count)
     try:
-        chat_file.analysis_json = analyze_pages(load_pages(storage.absolute_path(rel)))
+        pages = load_pages(storage.absolute_path(rel))
+        doc = classify_document(pages, client)
+        if doc.kind != "ok":
+            reason = doc.kind + (":fallback" if doc.source == "fallback" else "")
+            chat_file.safety_status = "refused"
+            chat_file.safety_reason = reason
+            db.add(chat_file)
+            db.commit()
+            raise ApiError(422, "document_refused", message_for(reason))
+        analysis = analyze_pages(pages)
+        for n, pg in enumerate(analysis["pages"], 1):
+            boxes = [b[1:] for b in doc.signature_boxes if b[0] == n]
+            flagged = flag_signature_regions(
+                [Region.model_validate(r) for r in pg["regions"]], pages[n - 1], boxes
+            )
+            pg["regions"] = [r.model_dump(mode="json") for r in flagged]
+        chat_file.analysis_json = analysis
         db.add(chat_file)
         db.commit()
+    except ApiError:
+        raise
     except Exception:
         db.rollback()
         storage.delete_file(rel)

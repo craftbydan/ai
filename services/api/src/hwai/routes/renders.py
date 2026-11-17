@@ -17,6 +17,8 @@ from hwai.page.analyze import load_pages
 from hwai.page.regions import Region
 from hwai.render import get_renderer
 from hwai.routes.chats import get_owned_chat
+from hwai.safety.rules import SIGNATURE_REFUSAL, check_file_allowed
+from hwai.safety.signature import looks_like_signature_text
 from hwai.schemas import FitItem, FitReport, Placement, RenderOut, RenderRequest
 
 router = APIRouter()
@@ -35,8 +37,7 @@ def target_file(db: Session, chat: Chat) -> ChatFile:
     )
     if chat_file is None:
         raise ApiError(400, "no_file", "Upload a file to write on first.")
-    if chat_file.safety_status != "ok":
-        raise ApiError(400, "file_refused", "That file cannot be written on.")
+    check_file_allowed(chat_file)
     return chat_file
 
 
@@ -68,6 +69,10 @@ def render_placements(db: Session, chat: Chat, placements: list[Placement]) -> R
                 f"Region '{p.region_id}' does not exist on this file. "
                 f"Valid regions: {', '.join(sorted(regions)) or 'none'}.",
             )
+
+    for p in placements:
+        if regions[p.region_id].signature or looks_like_signature_text(p.text):
+            raise ApiError(403, "signature_blocked", SIGNATURE_REFUSAL)
 
     renderer = get_renderer()
     placed: list[PlacedText] = []

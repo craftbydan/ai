@@ -18,6 +18,7 @@ class Region(BaseModel):
     bbox_px: tuple[int, int, int, int]  # x0, y0, x1, y1
     baseline_px: int | None = None
     line_height_px: int | None = None
+    signature: bool = False  # set by safety.signature; never writeable
 
     @field_validator("bbox_px")
     @classmethod

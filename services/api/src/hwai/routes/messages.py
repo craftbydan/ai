@@ -5,9 +5,10 @@ from typing import Annotated, Any
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel, Field
 
-from hwai.agent.loop import get_llm_client, run_agent
+from hwai.agent.loop import run_agent
 from hwai.deps import DbDep, UserDep
 from hwai.errors import ApiError
+from hwai.llm import get_llm_client
 from hwai.models import Hand
 from hwai.routes.chats import get_owned_chat
 from hwai.routes.renders import target_file

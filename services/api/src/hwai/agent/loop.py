@@ -1,7 +1,5 @@
 """Tool-use loop: user text + page images -> placements -> render -> short reply."""
 
-import base64
-import io
 import json
 from dataclasses import dataclass
 from typing import Any
@@ -16,63 +14,29 @@ from hwai.agent.prompts import SYSTEM_PROMPT
 from hwai.agent.tools import TOOLS
 from hwai.config import get_settings
 from hwai.errors import ApiError
+from hwai.llm import (  # noqa: F401  (re-exported: the injection point lives in hwai.llm)
+    LazyLlmClient,
+    downscale,
+    get_llm_client,
+    image_block,
+)
 from hwai.models import Chat, ChatFile, Message, Render
 from hwai.page.analyze import draw_regions, load_pages
 from hwai.page.regions import Region
 from hwai.routes.renders import render_placements, target_file
+from hwai.safety.rules import SIGNATURE_REFUSAL, check_file_allowed
+from hwai.safety.signature import looks_like_signature_text
 from hwai.schemas import Placement
 
 MAX_MODEL_CALLS = 6
-MAX_IMAGE_EDGE = 1200
 MAX_CONTEXT_PAGES = 3
 HISTORY_TURNS = 6
 APOLOGY = "Sorry, I could not finish that. Please try again with a simpler request."
 
 
-class LazyLlmClient:
-    """Resolves the real Anthropic client on first use, so a missing key only raises the
-    503 when a model call is actually needed (after ownership/readiness/file checks)."""
-
-    def __init__(self) -> None:
-        self._client: Any = None
-
-    @property
-    def messages(self) -> Any:
-        if self._client is None:
-            settings = get_settings()
-            if not settings.anthropic_api_key:
-                raise ApiError(503, "agent_not_configured", "The chat assistant is not set up yet.")
-            import anthropic
-
-            self._client = anthropic.Anthropic(api_key=settings.anthropic_api_key)
-        return self._client.messages
-
-
-def get_llm_client() -> Any:
-    """FastAPI dependency and injection point. Tests override it with a scripted fake.
-    Never raises: the 503 is deferred to first use of `.messages`."""
-    return LazyLlmClient()
-
-
 def check_chat_file_allowed(chat_file: ChatFile) -> None:
-    """HOOK for Prompt 9: raise ApiError if this file must not be written on.
-    Currently allows everything."""
-    return None
-
-
-def downscale(img: Image.Image, max_edge: int = MAX_IMAGE_EDGE) -> Image.Image:
-    """Long edge <= max_edge, aspect kept (never upscales)."""
-    scale = max_edge / max(img.size)
-    if scale >= 1:
-        return img
-    return img.resize((max(1, round(img.width * scale)), max(1, round(img.height * scale))))
-
-
-def image_block(img: Image.Image) -> dict[str, Any]:
-    buf = io.BytesIO()
-    downscale(img.convert("RGB")).save(buf, format="PNG", optimize=True)
-    data = base64.b64encode(buf.getvalue()).decode()
-    return {"type": "image", "source": {"type": "base64", "media_type": "image/png", "data": data}}
+    """Raise ApiError (403 file_refused) if this file was refused at upload."""
+    check_file_allowed(chat_file)
 
 
 def estimate_thb(input_tokens: int, output_tokens: int) -> float:
@@ -146,6 +110,16 @@ def _history(db: Session, chat: Chat) -> list[dict[str, Any]]:
 def run_agent(db: Session, chat: Chat, text: str, client: Any) -> AgentResult:
     chat_file = target_file(db, chat)
     check_chat_file_allowed(chat_file)
+    if looks_like_signature_text(text):
+        # Deterministic guard: a signature request never reaches the model or the renderer.
+        _save(db, chat, "user", {"text": text, "usage": _usage()})
+        _save(db, chat, "assistant", {"reply": SIGNATURE_REFUSAL, "content": [], "usage": _usage()})
+        last = _latest_render(db, chat)
+        return AgentResult(
+            reply=SIGNATURE_REFUSAL,
+            render_version=last.version if last else None,
+            preview_url=f"/chats/{chat.id}/renders/{last.version}/preview.png" if last else None,
+        )
     _ = client.messages  # resolve the client (503 if unconfigured) before any DB write
     analysis: dict[str, Any] = chat_file.analysis_json or {"pages": []}
     regions_by_page: dict[int, list[Region]] = {
@@ -257,7 +231,13 @@ def _run_tool(
         if not isinstance(page, int) or page not in regions_by_page:
             return err(f"No page {page}. Pages: {sorted(regions_by_page)}.")
         data = [
-            {"id": r.id, "kind": r.kind, "bbox_px": r.bbox_px, "baseline_px": r.baseline_px}
+            {
+                "id": r.id,
+                "kind": r.kind,
+                "bbox_px": r.bbox_px,
+                "baseline_px": r.baseline_px,
+                "signature": r.signature,
+            }
             for r in regions_by_page[page]
         ]
         return [{"type": "text", "text": json.dumps(data)}], False, None

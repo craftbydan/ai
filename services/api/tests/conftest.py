@@ -18,6 +18,7 @@ def _isolated_data_dir(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Itera
     data_dir = tmp_path / "data"
     monkeypatch.setenv("DATA_DIR", str(data_dir))
     monkeypatch.setenv("ENV", "dev")
+    monkeypatch.setenv("CLASSIFIER", "mock:ok")  # tests never call the real classifier
     get_settings.cache_clear()
     engine = make_engine()
     Base.metadata.create_all(engine)

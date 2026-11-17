@@ -11,7 +11,7 @@
 | 6 | Read the target page | done | 05ba5f3 | margin-line bug found by checker, fixed + tested |
 | 7 | Layout engine | done | 25e6041 | |
 | 8 | Chat agent | done | e9eb6e2 | live check skipped (no ANTHROPIC_API_KEY); model id claude-haiku-5-5 unconfirmed; est. cost uses placeholder USD prices |
-| 9 | Safety rules | pending | | |
+| 9 | Safety rules | done (uncommitted) | | live classification skipped (no ANTHROPIC_API_KEY); only the local fallback and scripted-client paths tested |
 | 10 | Web app | pending | | |
 | 11 | Accounts and billing (test mode) | pending | | needs Stripe test keys |
 | 12 | Testing and hardening | pending | | |
@@ -32,6 +32,8 @@ Prompt 6 adds: page/analyze.py (analyze_page, draw_regions, CLI), page/regions.p
 Prompt 7 adds: layout/place.py (layout_text, compose, PlacedText), Placement/RenderRequest/FitReport/RenderOut schemas, routes/renders.py (POST /chats/{id}/render, GET .../renders/{v}/preview.png[?page=N]), routes/exports.py (POST /chats/{id}/export?version&format[&page]), storage.write_file, pdfio.pdf_page_size_points, export.image_size_points, 422 messages now name the bad field.
 
 Prompt 7-8 add: layout/place.py, POST /chats/{id}/render, GET .../renders/{v}/preview.png, POST /chats/{id}/export; agent/ (tools, prompts, loop), POST /chats/{id}/messages, get_llm_client() lazy injection point, check_chat_file_allowed() hook (open), messages.content_json.usage token/THB log.
+
+Prompt 9 adds: safety/ (rules, classify, signature), hwai/llm.py (get_llm_client moved, re-exported from agent.loop), CLASSIFIER env, Region.signature, 422 document_refused, 403 file_refused / signature_blocked, own_hand_statement on hand responses, tests/test_safety.py.
 
 ## Waiting on you
 - Prompt 4: NVIDIA GPU machine, ONEDM_WEIGHTS_PATH, GPU_COST_THB_PER_HOUR

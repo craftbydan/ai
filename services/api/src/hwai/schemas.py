@@ -5,6 +5,8 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
+from hwai.safety.rules import OWN_HAND_STATEMENT
+
 
 class HealthResponse(BaseModel):
     status: str
@@ -26,6 +28,8 @@ class HandDocumentOut(BaseModel):
     page_count: int
     status: str
     created_at: datetime
+    own_hand_confirmed_at: datetime | None = None
+    own_hand_statement: str = OWN_HAND_STATEMENT
 
 
 class HandOut(BaseModel):
@@ -35,6 +39,7 @@ class HandOut(BaseModel):
     status_message: str | None = None
     sample_count: int = 0
     own_hand_confirmed_at: datetime | None
+    own_hand_statement: str = OWN_HAND_STATEMENT
     documents: list[HandDocumentOut]
 
 

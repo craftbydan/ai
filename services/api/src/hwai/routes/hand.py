@@ -84,4 +84,6 @@ def upload_hand_document(
         storage.delete_file(rel)
         raise
     background.add_task(ingest_document, doc.id)
-    return HandDocumentOut.model_validate(doc, from_attributes=True)
+    return HandDocumentOut.model_validate(doc, from_attributes=True).model_copy(
+        update={"own_hand_confirmed_at": hand.own_hand_confirmed_at}
+    )

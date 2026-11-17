@@ -17,6 +17,7 @@ class Settings(BaseSettings):
     ocr: str = "fake"  # fake | trocr
     fake_ocr_truth_path: Path | None = None  # FakeOcr ground truth (tests only)
     secret_key: str = ""
+    classifier: str = "real"  # real | mock:<kind> (mock ignored when ENV=production)
 
     anthropic_api_key: str = ""
     agent_model: str = "claude-haiku-5-5"
